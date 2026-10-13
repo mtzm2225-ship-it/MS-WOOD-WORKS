@@ -340,7 +340,8 @@ async function start() {
   await ensureDatabaseSchema();
 
   const port = Number(process.env.PORT || 3000);
-  app.listen(port, () => console.log(`MS Woodworks is listening on port ${port}`));
+  const host = isProduction ? '0.0.0.0' : '127.0.0.1';
+  app.listen(port, host, () => console.log(`MS Woodworks is listening on ${host}:${port}`));
 }
 
 module.exports = app;
