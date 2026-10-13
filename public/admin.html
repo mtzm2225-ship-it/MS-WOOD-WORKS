@@ -58,6 +58,7 @@
         <button class="tab-button" type="button" data-view="commentsView" aria-selected="false">تعليقات الصور</button>
         <button class="tab-button" type="button" data-view="customersView" aria-selected="false">حسابات العملاء</button>
         <button class="tab-button" type="button" data-view="hrView" aria-selected="false">العاملون</button>
+        <button class="tab-button" type="button" data-view="expensesView" aria-selected="false">المصروفات والعُهد</button>
       </nav>
 
       <section class="dashboard-view" id="ordersView" aria-labelledby="ordersTitle">
@@ -235,6 +236,142 @@
                 <tbody id="payrollList"></tbody>
               </table>
             </div>
+          </section>
+        </section>
+      </section>
+
+      <section class="dashboard-view" id="expensesView" aria-labelledby="expensesTitle" hidden>
+          <div class="page-heading hr-heading">
+            <div>
+              <p class="eyebrow">الحسابات اليومية</p>
+              <h2 id="expensesTitle">المصروفات والعُهد</h2>
+              <p class="muted">تابع المصروفات من العُهدة وخارجها، وتسليم الأموال والمرتجع والرصيد المتاح لكل مسؤول.</p>
+            </div>
+            <div class="expense-date-range">
+              <label class="month-picker" for="expenseFrom">من تاريخ
+                <input id="expenseFrom" type="date" required />
+              </label>
+              <label class="month-picker" for="expenseTo">إلى تاريخ
+                <input id="expenseTo" type="date" required />
+              </label>
+              <button class="button button--quiet" id="refreshExpenses" type="button">عرض الفترة</button>
+            </div>
+          </div>
+          <p class="inline-message" id="expensesMessage" role="status"></p>
+
+          <section class="summary-grid hr-summary expense-summary" aria-label="ملخص المصروفات والعُهد">
+            <article class="summary-item"><span>إجمالي المصروفات</span><strong id="expensesTotal">0 ج.م</strong></article>
+            <article class="summary-item"><span>مصروفات من العُهد</span><strong id="custodyExpensesTotal">0 ج.م</strong></article>
+            <article class="summary-item"><span>مصروفات مباشرة خارج العُهد</span><strong id="directExpensesTotal">0 ج.م</strong></article>
+            <article class="summary-item"><span>الرصيد المتبقي في العُهد</span><strong id="custodyBalanceTotal">0 ج.م</strong></article>
+          </section>
+
+          <div class="hr-management-grid expense-forms">
+            <section class="hr-panel" aria-labelledby="newCustodyTitle">
+              <h3 id="newCustodyTitle">تسليم عُهدة جديدة</h3>
+              <p class="muted">سجّل اسم المسؤول والمبلغ المستلم؛ يظهر المبلغ كرصد افتتاحي في سجل العُهدة.</p>
+              <form id="newCustodyForm" class="hr-form">
+                <label for="custodyHolder">اسم مستلم العُهدة</label>
+                <input id="custodyHolder" name="holderName" maxlength="100" autocomplete="name" required />
+                <label for="custodyInitialAmount">المبلغ المسلم (جنيه)</label>
+                <input id="custodyInitialAmount" name="amount" type="number" min="0.01" max="100000000" step="0.01" required />
+                <label for="custodyInitialDate">تاريخ التسليم</label>
+                <input id="custodyInitialDate" name="date" type="date" required />
+                <label for="custodyInitialNote">ملاحظة أو رقم مستند</label>
+                <input id="custodyInitialNote" name="note" maxlength="500" />
+                <button class="button button--primary" type="submit">تسجيل وتسليم العُهدة</button>
+              </form>
+            </section>
+
+            <section class="hr-panel" aria-labelledby="custodyMovementTitle">
+              <h3 id="custodyMovementTitle">زيادة عُهدة أو إرجاع مبلغ</h3>
+              <p class="muted">كل زيادة أو مبلغ مرتجع يُسجل كحركة مستقلة مع التاريخ والملاحظة.</p>
+              <form id="custodyMovementForm" class="hr-form">
+                <label for="movementCustody">مسؤول العُهدة</label>
+                <select id="movementCustody" name="custodyId" required></select>
+                <label for="custodyMovementType">نوع الحركة</label>
+                <select id="custodyMovementType" name="type">
+                  <option value="issued">تسليم مبلغ إضافي</option>
+                  <option value="returned">إرجاع مبلغ للخزنة</option>
+                </select>
+                <label for="custodyMovementAmount">المبلغ (جنيه)</label>
+                <input id="custodyMovementAmount" name="amount" type="number" min="0.01" max="100000000" step="0.01" required />
+                <label for="custodyMovementDate">التاريخ</label>
+                <input id="custodyMovementDate" name="date" type="date" required />
+                <label for="custodyMovementNote">السبب أو ملاحظة</label>
+                <input id="custodyMovementNote" name="note" maxlength="500" />
+                <button class="button button--primary" type="submit">حفظ حركة العُهدة</button>
+              </form>
+            </section>
+
+            <section class="hr-panel expense-entry-panel" aria-labelledby="newExpenseTitle">
+              <h3 id="newExpenseTitle">تسجيل مصروف</h3>
+              <p class="muted">مصروف العُهدة يُخصم من رصيد المسؤول؛ والمصروف المباشر يُسجل خارجها ضمن الإجمالي.</p>
+              <form id="expenseForm" class="hr-form hr-inline-form expense-form">
+                <div class="hr-field"><label for="expenseSource">مصدر الدفع</label>
+                  <select id="expenseSource" name="source">
+                    <option value="custody">من عُهدة</option>
+                    <option value="direct">مصروف مباشر خارج العُهد</option>
+                  </select>
+                </div>
+                <div class="hr-field" id="expenseCustodyField"><label for="expenseCustody">مسؤول العُهدة</label>
+                  <select id="expenseCustody" name="custodyId" required></select>
+                </div>
+                <div class="hr-field"><label for="expenseDate">التاريخ</label><input id="expenseDate" name="date" type="date" required /></div>
+                <div class="hr-field"><label for="expenseAmount">المبلغ (جنيه)</label><input id="expenseAmount" name="amount" type="number" min="0.01" max="100000000" step="0.01" required /></div>
+                <div class="hr-field"><label for="expenseCategory">بند المصروف</label>
+                  <input id="expenseCategory" name="category" list="expenseCategorySuggestions" maxlength="100" placeholder="خامات، نقل، صيانة..." required />
+                  <datalist id="expenseCategorySuggestions">
+                    <option value="خامات وأخشاب"></option>
+                    <option value="أدوات ومستلزمات"></option>
+                    <option value="نقل وشحن"></option>
+                    <option value="صيانة"></option>
+                    <option value="كهرباء ومرافق"></option>
+                    <option value="أجور يومية"></option>
+                    <option value="أخرى"></option>
+                  </datalist>
+                </div>
+                <div class="hr-field"><label for="expenseDescription">التفاصيل</label><input id="expenseDescription" name="description" maxlength="1000" required /></div>
+                <div class="hr-field"><label for="expensePaidTo">المورّد أو المستلم</label><input id="expensePaidTo" name="paidTo" maxlength="120" /></div>
+                <div class="hr-field"><label for="expensePaymentMethod">طريقة الدفع</label>
+                  <select id="expensePaymentMethod" name="paymentMethod">
+                    <option value="cash">نقدًا</option>
+                    <option value="transfer">تحويل بنكي</option>
+                    <option value="card">بطاقة</option>
+                    <option value="wallet">محفظة إلكترونية</option>
+                    <option value="other">أخرى</option>
+                  </select>
+                </div>
+                <div class="hr-field"><label for="expenseReference">رقم الفاتورة أو الإيصال</label><input id="expenseReference" name="reference" maxlength="100" /></div>
+                <div class="hr-field expense-note-field"><label for="expenseNote">ملاحظات إضافية</label><input id="expenseNote" name="note" maxlength="500" /></div>
+                <button class="button button--primary" type="submit">حفظ المصروف</button>
+              </form>
+            </section>
+          </div>
+
+          <div class="hr-management-grid expense-records-grid">
+            <section class="hr-panel" aria-labelledby="custodyBalancesTitle">
+              <h3 id="custodyBalancesTitle">أرصدة العُهد الحالية</h3>
+              <div class="records-list" id="custodyBalancesList" aria-live="polite"></div>
+            </section>
+            <section class="hr-panel" aria-labelledby="expenseCategoriesTitle">
+              <h3 id="expenseCategoriesTitle">التجميع حسب بند المصروف</h3>
+              <div class="payroll-table-wrap">
+                <table class="payroll-table">
+                  <thead><tr><th>البند</th><th>عدد الحركات</th><th>الإجمالي</th></tr></thead>
+                  <tbody id="expenseCategoriesList"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+
+          <section class="hr-panel hr-list-panel" aria-labelledby="expensesListTitle">
+            <h3 id="expensesListTitle">سجل المصروفات للفترة</h3>
+            <div class="records-list" id="expensesList" aria-live="polite"></div>
+          </section>
+          <section class="hr-panel hr-list-panel" aria-labelledby="custodyMovementsTitle">
+            <h3 id="custodyMovementsTitle">سجل تسليم واسترجاع العُهد للفترة</h3>
+            <div class="records-list" id="custodyMovementsList" aria-live="polite"></div>
           </section>
         </section>
       </section>

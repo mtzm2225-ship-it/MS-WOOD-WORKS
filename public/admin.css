@@ -153,6 +153,7 @@ h2 { margin-bottom: 4px; font-size: 1.4rem; }
 
 .dashboard-tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 22px;
   margin-bottom: 22px;
   border-bottom: 1px solid var(--admin-line);
@@ -277,6 +278,16 @@ h2 { margin-bottom: 4px; font-size: 1.4rem; }
 .status-badge[data-status="archived"], .status-badge[data-status="absent"] { background: #f4e8e5; color: #873d32; }
 .advance-amount, .payroll-net { color: var(--admin-green); font-weight: 700; white-space: nowrap; }
 .payroll-negative { color: var(--admin-red); font-weight: 700; white-space: nowrap; }
+.expense-date-range { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 9px; }
+.expense-date-range .month-picker input { display: block; }
+.expense-date-range .button { white-space: nowrap; }
+.expense-forms { align-items: start; }
+.expense-entry-panel { grid-column: 1 / -1; }
+.expense-form { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.expense-record { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px; }
+.expense-record .worker-details { gap: 6px; }
+.expense-record .record-title { overflow-wrap: anywhere; }
+.expense-record > strong { direction: rtl; }
 .payroll-table-wrap { overflow-x: auto; }
 .payroll-table { width: 100%; border-collapse: collapse; text-align: start; }
 .payroll-table th, .payroll-table td { padding: 13px 10px; border-bottom: 1px solid var(--admin-line); white-space: nowrap; }
@@ -288,10 +299,18 @@ h2 { margin-bottom: 4px; font-size: 1.4rem; }
   .hr-heading { align-items: stretch; }
   .hr-heading .month-picker { align-self: flex-start; }
   .hr-inline-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .expense-date-range { align-items: stretch; }
+  .expense-date-range .month-picker { flex: 1; }
+  .expense-date-range .button { align-self: flex-end; }
+  .expense-entry-panel { grid-column: auto; }
 }
 
 @media (max-width: 520px) {
   .hr-inline-form { grid-template-columns: minmax(0, 1fr); }
+  .expense-form { grid-template-columns: minmax(0, 1fr); }
+  .expense-record { align-items: flex-start; grid-template-columns: minmax(0, 1fr); }
+  .expense-date-range { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .expense-date-range .button { grid-column: 1 / -1; }
   .worker-record { align-items: flex-start; flex-direction: column; }
   .worker-actions { justify-content: flex-start; }
   .category-record { grid-template-columns: minmax(0, 1fr) auto; }

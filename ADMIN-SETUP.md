@@ -59,6 +59,8 @@ The **Customer accounts** dashboard tab lists registered customers' contact deta
 - In **Workers**, create work categories and workers with fixed monthly salaries. Worker records can be edited or archived; archiving preserves their attendance and advance history.
 - Record daily attendance and check-in/check-out times. Existing daily records can be updated later to add a check-out time.
 - Record advances with their issue date. The monthly payroll deducts advances in the same month from fixed salary; attendance is tracked but does not automatically reduce pay.
+- In **Expenses and custody**, record each custody holder and the amount handed over. Add later top-ups or returned cash as separate dated movements with notes. Record each purchase as either a custody expense (which immediately reduces that holder's available balance) or a direct expense paid outside custody. Custody spending and returns cannot exceed the available balance.
+- Expense records include the date, amount, category, description, optional supplier/payee, payment method, receipt reference, and notes. Select any start and end dates to review total expenses, custody and direct totals, current outstanding custody balances, category totals, and the expense and custody movement histories. Handing over custody funds is not itself counted as an expense; only the recorded purchase or payment contributes to expense totals.
 - Use **Log out** when finished. Admin sessions expire after eight hours.
 
 The admin APIs require the PostgreSQL and secret environment variables above; a successful static-site build alone does not configure them.

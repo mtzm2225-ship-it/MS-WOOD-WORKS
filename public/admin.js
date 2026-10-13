@@ -41,6 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const localMonth = (date = new Date()) => localDate(date).slice(0, 7);
   const money = (value) => `${new Intl.NumberFormat('ar-EG', { maximumFractionDigits: 2 }).format(Number(value) || 0)} ج.م`;
   const formatTime = (value) => typeof value === 'string' ? value.slice(0, 5) : '';
+  const formatPlainDate = (value) => new Date(`${String(value).slice(0, 10)}T00:00:00`);
 
   async function api(url, options = {}) {
     // تبقى الطلبات على النطاق نفسه كي يرسل المتصفح ملف جلسة الإدارة الآمن.
@@ -472,6 +473,177 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('hrNetTotal').textContent = money(netTotal);
   }
 
+  const expensePaymentLabels = {
+    cash: 'نقدًا',
+    transfer: 'تحويل بنكي',
+    card: 'بطاقة',
+    wallet: 'محفظة إلكترونية',
+    other: 'أخرى'
+  };
+
+  function updateCustodySelect(select, custodies) {
+    const selected = select.value;
+    select.replaceChildren();
+    const placeholder = element('option', '', custodies.length ? 'اختر مسؤول العُهدة' : 'سجّل عُهدة جديدة أولًا');
+    placeholder.value = '';
+    placeholder.disabled = true;
+    placeholder.selected = true;
+    select.append(placeholder);
+    custodies.forEach((custody) => {
+      const option = element('option', '', `${custody.holder_name} · المتاح ${money(custody.balance)}`);
+      option.value = custody.id;
+      option.selected = String(custody.id) === selected;
+      select.append(option);
+    });
+  }
+
+  function renderExpenseReport(report) {
+    const summary = report.summary || {};
+    document.getElementById('expensesTotal').textContent = money(summary.total);
+    document.getElementById('custodyExpensesTotal').textContent = money(summary.custody_total);
+    document.getElementById('directExpensesTotal').textContent = money(summary.direct_total);
+    document.getElementById('custodyBalanceTotal').textContent = money(
+      report.custodies.reduce((total, custody) => total + Number(custody.balance), 0)
+    );
+
+    [document.getElementById('movementCustody'), document.getElementById('expenseCustody')]
+      .forEach((select) => updateCustodySelect(select, report.custodies));
+
+    const balances = document.getElementById('custodyBalancesList');
+    balances.replaceChildren();
+    if (!report.custodies.length) {
+      balances.append(element('p', 'empty-state', 'لا توجد عُهد نشطة. سجّل العُهدة الأولى لتبدأ متابعة رصيدها.'));
+    } else {
+      report.custodies.forEach((custody) => {
+        const card = element('article', 'record worker-record');
+        card.append(
+          element('div', 'worker-details'),
+          element('strong', 'advance-amount', money(custody.balance))
+        );
+        card.firstElementChild.append(
+          element('h4', 'record-title', custody.holder_name),
+          element('span', '', `رقم العُهدة ${custody.id}`)
+        );
+        balances.append(card);
+      });
+    }
+
+    const categories = document.getElementById('expenseCategoriesList');
+    categories.replaceChildren();
+    if (!report.categories.length) {
+      const row = document.createElement('tr');
+      const cell = element('td', 'empty-state', 'لا توجد مصروفات في الفترة المختارة.');
+      cell.colSpan = 3;
+      row.append(cell);
+      categories.append(row);
+    } else {
+      report.categories.forEach((category) => {
+        const row = document.createElement('tr');
+        row.append(
+          element('td', '', category.category),
+          element('td', '', new Intl.NumberFormat('ar-EG').format(category.expense_count)),
+          element('td', '', money(category.total))
+        );
+        categories.append(row);
+      });
+    }
+
+    const expenseList = document.getElementById('expensesList');
+    expenseList.replaceChildren();
+    if (!report.expenses.length) {
+      expenseList.append(element('p', 'empty-state', 'لا توجد مصروفات مسجلة في الفترة المختارة.'));
+    } else {
+      report.expenses.forEach((expense) => {
+        const card = element('article', 'record expense-record');
+        const details = element('div', 'worker-details');
+        details.append(
+          element('h4', 'record-title', `${expense.category} · ${money(expense.amount)}`),
+          element('span', '', new Intl.DateTimeFormat('ar-EG', { dateStyle: 'medium' })
+            .format(formatPlainDate(expense.expense_date))),
+          element('span', '', expense.description),
+          element('span', '', expense.source === 'custody'
+            ? `من عُهدة ${expense.holder_name || ''}`
+            : 'مصروف مباشر خارج العُهد'),
+          element('span', '', `طريقة الدفع: ${expensePaymentLabels[expense.payment_method] || expense.payment_method}`)
+        );
+        if (expense.paid_to) details.append(element('span', '', `المورّد/المستلم: ${expense.paid_to}`));
+        if (expense.reference) details.append(element('span', '', `رقم الإيصال: ${expense.reference}`));
+        if (expense.note) details.append(element('span', '', `ملاحظة: ${expense.note}`));
+        card.append(details);
+        expenseList.append(card);
+      });
+      if (Number(report.expenses[0].result_total) > report.expenses.length) {
+        expenseList.append(element('p', 'inline-message', 'يعرض السجل أحدث ١٠٠٠ مصروف في الفترة؛ الإجماليات تشمل كل الحركات.'));
+      }
+    }
+
+    const movementList = document.getElementById('custodyMovementsList');
+    movementList.replaceChildren();
+    if (!report.movements.length) {
+      movementList.append(element('p', 'empty-state', 'لا توجد حركات تسليم أو إرجاع في الفترة المختارة.'));
+    } else {
+      report.movements.forEach((movement) => {
+        const returned = movement.movement_type === 'returned';
+        const card = element('article', 'record expense-record');
+        const details = element('div', 'worker-details');
+        details.append(
+          element('h4', 'record-title', `${movement.holder_name} · ${returned ? 'إرجاع إلى الخزنة' : 'تسليم عُهدة'}`),
+          element('span', '', new Intl.DateTimeFormat('ar-EG', { dateStyle: 'medium' })
+            .format(formatPlainDate(movement.movement_date))),
+          ...(movement.note ? [element('span', '', movement.note)] : [])
+        );
+        card.append(details, element('strong', returned ? 'payroll-negative' : 'advance-amount', money(movement.amount)));
+        movementList.append(card);
+      });
+      if (Number(report.movements[0].result_total) > report.movements.length) {
+        movementList.append(element('p', 'inline-message', 'يعرض السجل أحدث ١٠٠٠ حركة عُهدة في الفترة.'));
+      }
+    }
+  }
+
+  async function loadExpenses() {
+    const from = document.getElementById('expenseFrom').value;
+    const to = document.getElementById('expenseTo').value;
+    if (!from || !to) return;
+    if (from > to) throw new Error('تاريخ البداية يجب أن يكون قبل تاريخ النهاية أو مساويًا له.');
+    const query = new URLSearchParams({ from, to });
+    renderExpenseReport(await api(`/api/admin/expenses?${query}`));
+  }
+
+  async function refreshExpenseReportAfterSave(message, successMessage) {
+    message.textContent = successMessage;
+    try {
+      await loadExpenses();
+    } catch (error) {
+      message.textContent = `${successMessage} تعذر تحديث التقرير: ${error.message}`;
+    }
+  }
+
+  async function loadExpensesDashboard() {
+    const message = document.getElementById('expensesMessage');
+    message.textContent = '';
+    try {
+      await loadExpenses();
+    } catch (error) {
+      message.textContent = error.message;
+    }
+  }
+
+  async function submitLedgerForm(form, event, action) {
+    event.preventDefault();
+    const submit = form.querySelector('button[type="submit"]');
+    const message = document.getElementById('expensesMessage');
+    message.textContent = '';
+    submit.disabled = true;
+    try {
+      await action(message);
+    } catch (error) {
+      message.textContent = error.message;
+    } finally {
+      submit.disabled = false;
+    }
+  }
+
   async function loadHrData() {
     const [categories, workers] = await Promise.all([
       api('/api/admin/hr/categories'),
@@ -568,6 +740,88 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('payrollMonth').value = localMonth();
   document.getElementById('attendanceDate').value = localDate();
   document.getElementById('advanceDate').value = localDate();
+  document.getElementById('expenseTo').value = localDate();
+  document.getElementById('expenseFrom').value = `${localMonth()}-01`;
+  document.getElementById('custodyInitialDate').value = localDate();
+  document.getElementById('custodyMovementDate').value = localDate();
+  document.getElementById('expenseDate').value = localDate();
+
+  document.getElementById('newCustodyForm').addEventListener('submit', (event) => {
+    const form = event.currentTarget;
+    submitLedgerForm(form, event, async (message) => {
+      const formData = new FormData(form);
+      await api('/api/admin/custodies', {
+        method: 'POST',
+        body: JSON.stringify({
+          holderName: formData.get('holderName'),
+          amount: formData.get('amount'),
+          date: formData.get('date'),
+          note: formData.get('note')
+        })
+      });
+      form.reset();
+      document.getElementById('custodyInitialDate').value = localDate();
+      await refreshExpenseReportAfterSave(message, 'تم تسجيل العُهدة وتسليم المبلغ للمسؤول.');
+    });
+  });
+
+  document.getElementById('custodyMovementForm').addEventListener('submit', (event) => {
+    const form = event.currentTarget;
+    submitLedgerForm(form, event, async (message) => {
+      const formData = new FormData(form);
+      await api(`/api/admin/custodies/${encodeURIComponent(formData.get('custodyId'))}/movements`, {
+        method: 'POST',
+        body: JSON.stringify({
+          type: formData.get('type'),
+          amount: formData.get('amount'),
+          date: formData.get('date'),
+          note: formData.get('note')
+        })
+      });
+      form.reset();
+      document.getElementById('custodyMovementDate').value = localDate();
+      await refreshExpenseReportAfterSave(message, 'تم تسجيل حركة العُهدة وتحديث الرصيد.');
+    });
+  });
+
+  const expenseSource = document.getElementById('expenseSource');
+  const expenseCustody = document.getElementById('expenseCustody');
+  const expenseCustodyField = document.getElementById('expenseCustodyField');
+  function updateExpenseSource() {
+    const usesCustody = expenseSource.value === 'custody';
+    expenseCustodyField.hidden = !usesCustody;
+    expenseCustody.required = usesCustody;
+    expenseCustody.disabled = !usesCustody;
+  }
+  expenseSource.addEventListener('change', updateExpenseSource);
+  updateExpenseSource();
+  document.getElementById('expenseForm').addEventListener('submit', (event) => {
+    const form = event.currentTarget;
+    submitLedgerForm(form, event, async (message) => {
+      const formData = new FormData(form);
+      await api('/api/admin/expenses', {
+        method: 'POST',
+        body: JSON.stringify({
+          date: formData.get('date'),
+          source: formData.get('source'),
+          custodyId: formData.get('source') === 'custody' ? formData.get('custodyId') : null,
+          amount: formData.get('amount'),
+          category: formData.get('category'),
+          description: formData.get('description'),
+          paidTo: formData.get('paidTo'),
+          paymentMethod: formData.get('paymentMethod'),
+          reference: formData.get('reference'),
+          note: formData.get('note')
+        })
+      });
+      form.reset();
+      document.getElementById('expenseDate').value = localDate();
+      updateExpenseSource();
+      await refreshExpenseReportAfterSave(message, 'تم تسجيل المصروف وتحديث إجمالي الفترة ورصيد العُهدة.');
+    });
+  });
+
+  document.getElementById('refreshExpenses').addEventListener('click', loadExpensesDashboard);
 
   document.getElementById('categoryForm').addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -719,6 +973,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (button.dataset.view === 'commentsView') await loadComments();
       else if (button.dataset.view === 'customersView') await loadCustomers();
       else if (button.dataset.view === 'hrView') await loadHrDashboard();
+      else if (button.dataset.view === 'expensesView') await loadExpensesDashboard();
       else await loadOrders();
     });
   });

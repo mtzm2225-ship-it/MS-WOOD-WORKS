@@ -32,6 +32,9 @@ const workCategories = [];
 const workers = [];
 const attendance = [];
 const advances = [];
+const custodies = [];
+const custodyMovements = [];
+const expenses = [];
 
 function categoryById(id) {
   return workCategories.find((category) => String(category.id) === String(id));
@@ -43,6 +46,124 @@ class TestPool {
     const query = sql.replace(/\s+/g, ' ').trim();
     if (query.startsWith('CREATE TABLE') || query.startsWith('CREATE INDEX')) {
       return { rows: [], rowCount: 0 };
+    }
+    if (query.startsWith('WITH new_custody AS')) {
+      if (custodies.some((custody) => custody.holder_name === values[0])) {
+        throw Object.assign(new Error('duplicate custody holder'), { code: '23505' });
+      }
+      const custody = {
+        id: custodies.length + 1,
+        holder_name: values[0],
+        balance: Number(values[1]).toFixed(2),
+        active: true
+      };
+      custodies.push(custody);
+      const movement = {
+        id: custodyMovements.length + 1,
+        custody_id: custody.id,
+        movement_type: 'issued',
+        movement_date: values[2],
+        amount: Number(values[1]).toFixed(2),
+        note: values[3]
+      };
+      custodyMovements.push(movement);
+      return { rows: [movement], rowCount: 1 };
+    }
+    if (query.startsWith('WITH updated AS')) {
+      const custody = custodies.find((item) => String(item.id) === String(values[0]) && item.active);
+      const signedAmount = Number(values[1]);
+      if (!custody || Number(custody.balance) + signedAmount < 0) return { rows: [], rowCount: 0 };
+      custody.balance = (Number(custody.balance) + signedAmount).toFixed(2);
+      const movement = {
+        id: custodyMovements.length + 1,
+        custody_id: custody.id,
+        movement_type: values[4],
+        movement_date: values[2],
+        amount: Number(values[3]).toFixed(2),
+        note: values[5],
+        balance: custody.balance
+      };
+      custodyMovements.push(movement);
+      return { rows: [movement], rowCount: 1 };
+    }
+    if (query.startsWith('SELECT balance FROM cash_custodies')) {
+      const custody = custodies.find((item) => String(item.id) === String(values[0]) && item.active);
+      return { rows: custody ? [{ balance: custody.balance }] : [], rowCount: Number(Boolean(custody)) };
+    }
+    if (query.startsWith('SELECT id, holder_name, balance')) {
+      const records = custodies.filter((custody) => custody.active);
+      return { rows: records, rowCount: records.length };
+    }
+    if (query.startsWith('SELECT COUNT(*)::int AS expense_count')) {
+      const matching = expenses.filter((expense) => expense.expense_date >= values[0] && expense.expense_date <= values[1]);
+      const total = matching.reduce((sum, expense) => sum + Number(expense.amount), 0);
+      const custodyTotal = matching.filter((expense) => expense.source === 'custody')
+        .reduce((sum, expense) => sum + Number(expense.amount), 0);
+      return {
+        rows: [{
+          expense_count: matching.length,
+          total: total.toFixed(2),
+          custody_total: custodyTotal.toFixed(2),
+          direct_total: (total - custodyTotal).toFixed(2)
+        }],
+        rowCount: 1
+      };
+    }
+    if (query.startsWith('SELECT category, COUNT(*)::int AS expense_count')) {
+      const matching = expenses.filter((expense) => expense.expense_date >= values[0] && expense.expense_date <= values[1]);
+      const groups = new Map();
+      matching.forEach((expense) => {
+        const group = groups.get(expense.category) || { category: expense.category, expense_count: 0, total: 0 };
+        group.expense_count += 1;
+        group.total += Number(expense.amount);
+        groups.set(expense.category, group);
+      });
+      const rows = Array.from(groups.values())
+        .map((group) => ({ ...group, total: group.total.toFixed(2) }))
+        .sort((first, second) => Number(second.total) - Number(first.total));
+      return { rows, rowCount: rows.length };
+    }
+    if (query.startsWith('SELECT e.id, e.expense_date')) {
+      const rows = expenses.filter((expense) => expense.expense_date >= values[0] && expense.expense_date <= values[1])
+        .map((expense) => ({
+          ...expense,
+          holder_name: custodies.find((custody) => String(custody.id) === String(expense.custody_id))?.holder_name || null
+        }))
+        .reverse();
+      return { rows, rowCount: rows.length };
+    }
+    if (query.startsWith('SELECT m.id, m.custody_id, c.holder_name')) {
+      const rows = custodyMovements.filter((movement) => movement.movement_date >= values[0] && movement.movement_date <= values[1])
+        .map((movement) => ({
+          ...movement,
+          holder_name: custodies.find((custody) => custody.id === movement.custody_id)?.holder_name
+        }))
+        .reverse();
+      return { rows, rowCount: rows.length };
+    }
+    if (query.startsWith('WITH debited AS') || query.startsWith('INSERT INTO expenses')) {
+      const custodyExpense = query.includes('SELECT $1, $2, id');
+      const custodyId = custodyExpense ? Number(values[2]) : null;
+      const custody = custodyId && custodies.find((item) => item.id === custodyId && item.active);
+      if (custodyExpense && (!custody || Number(custody.balance) < Number(values[3]))) {
+        return { rows: [], rowCount: 0 };
+      }
+      if (custodyExpense) custody.balance = (Number(custody.balance) - Number(values[3])).toFixed(2);
+      const expense = {
+        id: expenses.length + 1,
+        expense_date: values[0],
+        source: values[1],
+        custody_id: custodyId,
+        amount: Number(values[3]).toFixed(2),
+        category: values[4],
+        description: values[5],
+        paid_to: values[6],
+        payment_method: values[7],
+        reference: values[8],
+        note: values[9]
+      };
+      expenses.push(expense);
+      return { rows: [expense], rowCount: 1 };
     }
     if (query.startsWith('SELECT c.id, c.name, c.created_at')) {
       return {
@@ -321,6 +442,7 @@ test('serves the website, admin dashboard, and assets', async () => {
     assert.match(adminPage, /إدارة MS Woodworks/);
     assert.match(adminPage, /data-view="customersView"/);
     assert.match(adminPage, /كلمات المرور لا تُعرض/);
+    assert.match(adminPage, /data-view="expensesView"/);
   }
 
   assert.match(homePage, /id="customerAccountOpen"/);
@@ -696,4 +818,157 @@ test('manages worker categories, attendance, advances, and monthly payroll', asy
     headers
   });
   assert.equal(deleteUnusedCategory.status, 204);
+});
+
+test('tracks custody balances and separates custody from direct expenses', async () => {
+  const unauthorized = await request('/api/admin/expenses?from=2026-10-01&to=2026-10-31');
+  assert.equal(unauthorized.status, 401);
+
+  const login = await request('/api/admin/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: process.env.ADMIN_EMAIL, password: process.env.ADMIN_PASSWORD })
+  });
+  assert.equal(login.status, 200);
+  const cookie = login.headers.getSetCookie().map((value) => value.split(';')[0]).join('; ');
+  const headers = { Cookie: cookie, 'Content-Type': 'application/json' };
+
+  const invalidRange = await request('/api/admin/expenses?from=2026-10-31&to=2026-10-01', { headers });
+  assert.equal(invalidRange.status, 400);
+
+  const invalidCustody = await request('/api/admin/custodies', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ holderName: 'ع', amount: -50, date: '2026-10-12' })
+  });
+  assert.equal(invalidCustody.status, 400);
+  const fractionalCustody = await request('/api/admin/custodies', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ holderName: 'مسؤول تجريبي', amount: '10.125', date: '2026-10-12' })
+  });
+  assert.equal(fractionalCustody.status, 400);
+
+  const createCustody = await request('/api/admin/custodies', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      holderName: 'مسؤول العُهدة',
+      amount: '1000',
+      date: '2026-10-12',
+      note: 'عُهدة بداية العمل'
+    })
+  });
+  assert.equal(createCustody.status, 201);
+  const issue = await createCustody.json();
+  assert.equal(issue.movement_type, 'issued');
+
+  const fractionalExpense = await request('/api/admin/expenses', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      date: '2026-10-13',
+      source: 'direct',
+      amount: '12.345',
+      category: 'خامات',
+      description: 'مبلغ بدقة غير مدعومة',
+      paymentMethod: 'cash'
+    })
+  });
+  assert.equal(fractionalExpense.status, 400);
+
+  const duplicateCustody = await request('/api/admin/custodies', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ holderName: 'مسؤول العُهدة', amount: '1', date: '2026-10-12' })
+  });
+  assert.equal(duplicateCustody.status, 409);
+
+  const addFunds = await request(`/api/admin/custodies/${issue.custody_id}/movements`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ type: 'issued', amount: '200', date: '2026-10-13', note: 'زيادة العُهدة' })
+  });
+  assert.equal(addFunds.status, 201);
+  assert.equal(Number((await addFunds.json()).balance), 1200);
+
+  const returnFunds = await request(`/api/admin/custodies/${issue.custody_id}/movements`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ type: 'returned', amount: '100', date: '2026-10-13', note: 'رد الباقي' })
+  });
+  assert.equal(returnFunds.status, 201);
+  assert.equal(Number((await returnFunds.json()).balance), 1100);
+
+  const excessiveReturn = await request(`/api/admin/custodies/${issue.custody_id}/movements`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ type: 'returned', amount: '5000', date: '2026-10-13' })
+  });
+  assert.equal(excessiveReturn.status, 409);
+
+  const createCustodyExpense = await request('/api/admin/expenses', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      date: '2026-10-13',
+      source: 'custody',
+      custodyId: issue.custody_id,
+      amount: '250',
+      category: 'مستلزمات الورشة',
+      description: 'شراء مسامير وخامات',
+      paidTo: 'مورد الخامات',
+      paymentMethod: 'cash',
+      reference: 'فاتورة-١٠',
+      note: 'تم إرفاق الفاتورة'
+    })
+  });
+  assert.equal(createCustodyExpense.status, 201);
+  assert.equal((await createCustodyExpense.json()).source, 'custody');
+
+  const overspend = await request('/api/admin/expenses', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      date: '2026-10-13',
+      source: 'custody',
+      custodyId: issue.custody_id,
+      amount: '900',
+      category: 'خامات',
+      description: 'مصروف يتجاوز الرصيد',
+      paymentMethod: 'cash'
+    })
+  });
+  assert.equal(overspend.status, 409);
+
+  const directExpense = await request('/api/admin/expenses', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      date: '2026-10-14',
+      source: 'direct',
+      amount: '300',
+      category: 'نقل',
+      description: 'نقل الأخشاب إلى الورشة',
+      paidTo: 'شركة نقل',
+      paymentMethod: 'transfer',
+      reference: 'تحويل-٢١'
+    })
+  });
+  assert.equal(directExpense.status, 201);
+  assert.equal((await directExpense.json()).custody_id, null);
+
+  const report = await request('/api/admin/expenses?from=2026-10-01&to=2026-10-31', { headers });
+  assert.equal(report.status, 200);
+  assert.equal(report.headers.get('cache-control'), 'no-store');
+  const data = await report.json();
+  assert.equal(Number(data.summary.expense_count), 2);
+  assert.equal(Number(data.summary.total), 550);
+  assert.equal(Number(data.summary.custody_total), 250);
+  assert.equal(Number(data.summary.direct_total), 300);
+  assert.equal(data.categories.length, 2);
+  assert.equal(data.expenses.length, 2);
+  assert.equal(data.movements.length, 3);
+  assert.equal(data.custodies.length, 1);
+  assert.equal(Number(data.custodies[0].balance), 850);
 });

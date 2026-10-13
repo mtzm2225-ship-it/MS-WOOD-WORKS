@@ -104,11 +104,47 @@ function ensureDatabaseSchema() {
         note VARCHAR(500) NOT NULL DEFAULT '',
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
+      CREATE TABLE IF NOT EXISTS cash_custodies (
+        id BIGSERIAL PRIMARY KEY,
+        holder_name VARCHAR(100) NOT NULL UNIQUE,
+        balance NUMERIC(12, 2) NOT NULL DEFAULT 0 CHECK (balance >= 0),
+        active BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE TABLE IF NOT EXISTS custody_movements (
+        id BIGSERIAL PRIMARY KEY,
+        custody_id BIGINT NOT NULL REFERENCES cash_custodies (id) ON DELETE RESTRICT,
+        movement_type VARCHAR(10) NOT NULL CHECK (movement_type IN ('issued', 'returned')),
+        movement_date DATE NOT NULL,
+        amount NUMERIC(12, 2) NOT NULL CHECK (amount > 0),
+        note VARCHAR(500) NOT NULL DEFAULT '',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE TABLE IF NOT EXISTS expenses (
+        id BIGSERIAL PRIMARY KEY,
+        expense_date DATE NOT NULL,
+        source VARCHAR(10) NOT NULL CHECK (source IN ('custody', 'direct')),
+        custody_id BIGINT REFERENCES cash_custodies (id) ON DELETE RESTRICT,
+        amount NUMERIC(12, 2) NOT NULL CHECK (amount > 0),
+        category VARCHAR(100) NOT NULL,
+        description VARCHAR(1000) NOT NULL,
+        paid_to VARCHAR(120) NOT NULL DEFAULT '',
+        payment_method VARCHAR(10) NOT NULL CHECK (payment_method IN ('cash', 'transfer', 'card', 'wallet', 'other')),
+        reference VARCHAR(100) NOT NULL DEFAULT '',
+        note VARCHAR(500) NOT NULL DEFAULT '',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        CHECK ((source = 'custody' AND custody_id IS NOT NULL)
+          OR (source = 'direct' AND custody_id IS NULL))
+      );
       CREATE INDEX IF NOT EXISTS orders_created_at_idx ON orders (created_at DESC);
       CREATE INDEX IF NOT EXISTS orders_customer_created_idx ON orders (customer_id, created_at DESC);
       CREATE INDEX IF NOT EXISTS comments_gallery_status_idx ON comments (gallery_id, status, created_at DESC);
       CREATE INDEX IF NOT EXISTS worker_attendance_date_idx ON worker_attendance (work_date, worker_id);
       CREATE INDEX IF NOT EXISTS worker_advances_date_idx ON worker_advances (advance_date, worker_id);
+      CREATE INDEX IF NOT EXISTS expenses_date_idx ON expenses (expense_date DESC, id DESC);
+      CREATE INDEX IF NOT EXISTS expenses_custody_date_idx ON expenses (custody_id, expense_date DESC);
+      CREATE INDEX IF NOT EXISTS custody_movements_date_idx ON custody_movements (movement_date DESC, id DESC);
+      CREATE INDEX IF NOT EXISTS custody_movements_account_date_idx ON custody_movements (custody_id, movement_date DESC);
     `).catch((error) => {
       schemaPromise = undefined;
       throw error;
@@ -216,6 +252,10 @@ function validMonth(value) {
   return typeof value === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
 }
 
+function validDateRange(from, to) {
+  return validDate(from) && validDate(to) && from <= to;
+}
+
 function validClock(value) {
   return typeof value === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
 }
@@ -223,6 +263,10 @@ function validClock(value) {
 function validMoney(value, { allowZero = false } = {}) {
   const amount = typeof value === 'number' ? value : Number(value);
   return Number.isFinite(amount) && (allowZero ? amount >= 0 : amount > 0) && amount <= 100000000;
+}
+
+function validCurrencyAmount(value) {
+  return validMoney(value) && /^\d+(?:\.\d{1,2})?$/.test(String(value));
 }
 
 function validRecordId(value) {
@@ -784,6 +828,232 @@ app.get('/api/admin/hr/payroll', requireAdmin, async (req, res, next) => {
     );
     res.json(result.rows);
   } catch (error) {
+    next(error);
+  }
+});
+
+app.get('/api/admin/custodies', requireAdmin, async (req, res, next) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, holder_name, balance, active, created_at
+       FROM cash_custodies
+       WHERE active = TRUE
+       ORDER BY holder_name`
+    );
+    res.set('Cache-Control', 'no-store');
+    res.json(result.rows);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post('/api/admin/custodies', requireAdmin, async (req, res, next) => {
+  try {
+    const holderName = cleanText(req.body.holderName, 100);
+    const amount = req.body.amount;
+    const issueDate = req.body.date;
+    const note = cleanText(req.body.note, 500);
+    if (holderName.length < 2 || !validCurrencyAmount(amount) || !validDate(issueDate)) {
+      return res.status(400).json({ error: 'أدخل اسم مستلم العُهدة ومبلغًا وتاريخًا صحيحًا.' });
+    }
+    const result = await pool.query(
+      `WITH new_custody AS (
+         INSERT INTO cash_custodies (holder_name, balance)
+         VALUES ($1, $2)
+         RETURNING id, holder_name, balance
+       )
+       INSERT INTO custody_movements (custody_id, movement_type, movement_date, amount, note)
+       SELECT id, 'issued', $3, $2, $4 FROM new_custody
+       RETURNING id, custody_id, movement_type, movement_date, amount, note`,
+      [holderName, amount, issueDate, note]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    if (error.code === '23505') return res.status(409).json({ error: 'يوجد سجل عُهدة لهذا الشخص بالفعل؛ اختره لإضافة مبلغ جديد.' });
+    next(error);
+  }
+});
+
+app.post('/api/admin/custodies/:id/movements', requireAdmin, async (req, res, next) => {
+  try {
+    if (!validRecordId(req.params.id)) return res.status(400).json({ error: 'معرّف العُهدة غير صالح.' });
+    const movementType = cleanText(req.body.type, 10);
+    const amount = req.body.amount;
+    const movementDate = req.body.date;
+    const note = cleanText(req.body.note, 500);
+    if (!['issued', 'returned'].includes(movementType) || !validCurrencyAmount(amount) || !validDate(movementDate)) {
+      return res.status(400).json({ error: 'راجع نوع حركة العُهدة والتاريخ والمبلغ.' });
+    }
+    const signedAmount = movementType === 'issued' ? Number(amount) : -Number(amount);
+    const result = await pool.query(
+      `WITH updated AS (
+         UPDATE cash_custodies
+         SET balance = balance + $2
+         WHERE id = $1 AND active = TRUE
+           AND ($2 > 0 OR balance >= ABS($2))
+         RETURNING id, balance
+       ),
+       inserted AS (
+         INSERT INTO custody_movements (custody_id, movement_type, movement_date, amount, note)
+         SELECT id, $5, $3, $4, $6 FROM updated
+         RETURNING id, custody_id, movement_type, movement_date, amount, note
+       )
+       SELECT inserted.*, updated.balance
+       FROM inserted JOIN updated ON updated.id = inserted.custody_id`,
+      [req.params.id, signedAmount, movementDate, amount, movementType, note]
+    );
+    if (!result.rowCount) {
+      const custody = await pool.query(
+        'SELECT balance FROM cash_custodies WHERE id = $1 AND active = TRUE',
+        [req.params.id]
+      );
+      if (!custody.rowCount) return res.status(404).json({ error: 'العُهدة غير موجودة أو موقوفة.' });
+      return res.status(409).json({ error: `المبلغ أكبر من الرصيد المتاح في العُهدة (${custody.rows[0].balance} ج.م).` });
+    }
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get('/api/admin/expenses', requireAdmin, async (req, res, next) => {
+  try {
+    const from = req.query.from;
+    const to = req.query.to;
+    if (!validDateRange(from, to)) {
+      return res.status(400).json({ error: 'اختر فترة صحيحة بحيث يكون تاريخ البداية قبل تاريخ النهاية أو مساويًا له.' });
+    }
+    const [summary, categories, expenses, movements, custodies] = await Promise.all([
+      pool.query(
+        `SELECT COUNT(*)::int AS expense_count,
+                COALESCE(SUM(amount), 0)::numeric(14, 2) AS total,
+                COALESCE(SUM(amount) FILTER (WHERE source = 'custody'), 0)::numeric(14, 2) AS custody_total,
+                COALESCE(SUM(amount) FILTER (WHERE source = 'direct'), 0)::numeric(14, 2) AS direct_total
+         FROM expenses
+         WHERE expense_date BETWEEN $1::date AND $2::date`,
+        [from, to]
+      ),
+      pool.query(
+        `SELECT category, COUNT(*)::int AS expense_count,
+                SUM(amount)::numeric(14, 2) AS total
+         FROM expenses
+         WHERE expense_date BETWEEN $1::date AND $2::date
+         GROUP BY category
+         ORDER BY SUM(amount) DESC, category`,
+        [from, to]
+      ),
+      pool.query(
+        `        SELECT e.id, COUNT(*) OVER()::int AS result_total,
+               e.expense_date, e.source, e.custody_id, c.holder_name,
+                e.amount, e.category, e.description, e.paid_to, e.payment_method,
+                e.reference, e.note, e.created_at
+         FROM expenses e
+         LEFT JOIN cash_custodies c ON c.id = e.custody_id
+         WHERE e.expense_date BETWEEN $1::date AND $2::date
+         ORDER BY e.expense_date DESC, e.id DESC
+         LIMIT 1000`,
+        [from, to]
+      ),
+      pool.query(
+        `        SELECT m.id, COUNT(*) OVER()::int AS result_total,
+               m.custody_id, c.holder_name, m.movement_type,
+                m.movement_date, m.amount, m.note, m.created_at
+         FROM custody_movements m
+         JOIN cash_custodies c ON c.id = m.custody_id
+         WHERE m.movement_date BETWEEN $1::date AND $2::date
+         ORDER BY m.movement_date DESC, m.id DESC
+         LIMIT 1000`,
+        [from, to]
+      ),
+      pool.query(
+        `SELECT id, holder_name, balance
+         FROM cash_custodies
+         WHERE active = TRUE
+         ORDER BY holder_name`
+      )
+    ]);
+    res.set('Cache-Control', 'no-store');
+    res.json({
+      summary: summary.rows[0],
+      categories: categories.rows,
+      expenses: expenses.rows,
+      movements: movements.rows,
+      custodies: custodies.rows
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post('/api/admin/expenses', requireAdmin, async (req, res, next) => {
+  try {
+    const expenseDate = req.body.date;
+    const source = cleanText(req.body.source, 10);
+    const custodyId = req.body.custodyId;
+    const amount = req.body.amount;
+    const category = cleanText(req.body.category, 100);
+    const description = cleanText(req.body.description, 1000);
+    const paidTo = cleanText(req.body.paidTo, 120);
+    const paymentMethod = cleanText(req.body.paymentMethod, 10);
+    const reference = cleanText(req.body.reference, 100);
+    const note = cleanText(req.body.note, 500);
+    const paymentMethods = ['cash', 'transfer', 'card', 'wallet', 'other'];
+    const custodyExpense = source === 'custody';
+    if (!validDate(expenseDate) || !['custody', 'direct'].includes(source)
+      || (custodyExpense && !validRecordId(custodyId))
+      || (!custodyExpense && custodyId !== undefined && custodyId !== null && custodyId !== '')
+      || !validCurrencyAmount(amount) || category.length < 2 || description.length < 3
+      || !paymentMethods.includes(paymentMethod)) {
+      return res.status(400).json({ error: 'أكمل التاريخ ونوع الصرف والبند والوصف وطريقة الدفع والمبلغ بشكل صحيح.' });
+    }
+    const values = [
+      expenseDate,
+      source,
+      custodyExpense ? custodyId : null,
+      amount,
+      category,
+      description,
+      paidTo,
+      paymentMethod,
+      reference,
+      note
+    ];
+    const result = custodyExpense
+      ? await pool.query(
+        `WITH debited AS (
+           UPDATE cash_custodies
+           SET balance = balance - $4
+           WHERE id = $3 AND active = TRUE AND balance >= $4
+           RETURNING id
+         )
+         INSERT INTO expenses
+           (expense_date, source, custody_id, amount, category, description,
+            paid_to, payment_method, reference, note)
+         SELECT $1, $2, id, $4, $5, $6, $7, $8, $9, $10 FROM debited
+         RETURNING id, expense_date, source, custody_id, amount, category,
+                   description, paid_to, payment_method, reference, note`,
+        values
+      )
+      : await pool.query(
+        `INSERT INTO expenses
+           (expense_date, source, custody_id, amount, category, description,
+            paid_to, payment_method, reference, note)
+         VALUES ($1, $2, NULL, $4, $5, $6, $7, $8, $9, $10)
+         RETURNING id, expense_date, source, custody_id, amount, category,
+                   description, paid_to, payment_method, reference, note`,
+        values
+      );
+    if (!result.rowCount && custodyExpense) {
+      const custody = await pool.query(
+        'SELECT balance FROM cash_custodies WHERE id = $1 AND active = TRUE',
+        [custodyId]
+      );
+      if (!custody.rowCount) return res.status(404).json({ error: 'العُهدة المختارة غير موجودة أو موقوفة.' });
+      return res.status(409).json({ error: `المصروف أكبر من الرصيد المتاح في العُهدة (${custody.rows[0].balance} ج.م). سجّله كمصروف مباشر إذا تم دفعه من خارجها.` });
+    }
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    if (error.code === '23503') return res.status(400).json({ error: 'العُهدة المختارة غير موجودة.' });
     next(error);
   }
 });
