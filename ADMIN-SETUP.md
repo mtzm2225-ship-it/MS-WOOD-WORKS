@@ -18,7 +18,7 @@ docker compose up --build -d
 docker compose logs -f app
 ```
 
-The server creates the `orders`, `comments`, worker-management, attendance, advances, and session tables when it starts. Open `http://localhost:3000` for the site and `http://localhost:3000/admin` for administration. PostgreSQL data remains in the `mswood-data` volume when containers restart. To stop the app without deleting data, run `docker compose down`; do not remove the volume if you need to keep orders and worker records.
+The server creates the customer, `orders`, `comments`, worker-management, attendance, advances, and session tables when it starts. Open `http://localhost:3000` for the site and `http://localhost:3000/admin` for administration. PostgreSQL data remains in the `mswood-data` volume when containers restart. To stop the app without deleting data, run `docker compose down`; do not remove the volume if you need to keep customer, order, and worker records.
 
 ## Local setup without Docker
 
@@ -48,7 +48,9 @@ Customer comments are private until an administrator approves them. The dashboar
 
 ## Using the admin dashboard
 
-Click **Sign in** in the main site's navigation and enter `ADMIN_EMAIL` and `ADMIN_PASSWORD`. After they are verified, you will be sent to the admin sign-in page and must enter the same credentials again to open the dashboard. You can also open `/admin` on the deployed site (or `http://localhost:3000/admin` locally) directly. There is no default password or separate account-creation step.
+Customer accounts are separate from administrator access. Customers can register from **Customer sign in** with their name, email, phone, and a password of at least 10 characters, or log in to see orders submitted while signed in. Guest orders remain available, but older guest orders are not automatically assigned to an account. Email verification is not configured.
+
+To manage the website, open `/admin` on the deployed site (or `http://localhost:3000/admin` locally) and sign in with the server's `ADMIN_EMAIL` and `ADMIN_PASSWORD`. Customer credentials do not grant administrator access.
 
 - In **Orders**, search by name or phone and change each order's status after following up with the customer.
 - In **Photo comments**, review pending comments and approve or reject them. Only approved comments are public.

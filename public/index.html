@@ -52,7 +52,7 @@
           <li><a href="#workshop" class="nav__link">الورشة</a></li>
           <li><a href="#about" class="nav__link">من نحن</a></li>
           <li><a href="#contact" class="nav__link">تواصل</a></li>
-          <li><button class="nav__link nav__login" id="adminLoginOpen" type="button">تسجيل الدخول</button></li>
+          <li><button class="nav__link nav__login" id="customerAccountOpen" type="button">دخول العملاء</button></li>
         </ul>
         <a href="#contact" class="btn btn--gold nav__cta">اطلب عرض سعر مخصص</a>
       </nav>
@@ -571,19 +571,52 @@
 
   <button class="to-top" id="toTop" aria-label="العودة للأعلى">↑</button>
 
-  <dialog class="admin-login-dialog" id="adminLoginDialog" aria-labelledby="adminLoginTitle">
-    <form class="admin-login-form" id="adminLoginForm">
-      <button class="admin-login-dialog__close" id="adminLoginClose" type="button" aria-label="إغلاق">×</button>
-      <p class="section-tag">مساحة خاصة</p>
-      <h2 id="adminLoginTitle">دخول الإدارة</h2>
-      <p class="admin-login-form__description">أدخلي بيانات الإدارة للانتقال إلى لوحة التحكم.</p>
-      <label for="siteAdminEmail">البريد الإلكتروني</label>
-      <input id="siteAdminEmail" name="email" type="email" autocomplete="username" required />
-      <label for="siteAdminPassword">كلمة المرور</label>
-      <input id="siteAdminPassword" name="password" type="password" autocomplete="current-password" required />
-      <button class="btn btn--gold btn--block" id="adminLoginSubmit" type="submit">دخول آمن</button>
-      <p class="admin-login-form__note" id="adminLoginNote" role="status" aria-live="polite"></p>
-    </form>
+  <dialog class="customer-auth-dialog" id="customerAuthDialog" aria-labelledby="customerLoginTitle">
+    <section class="customer-auth-panel" id="customerAuthPanel">
+      <button class="customer-auth-dialog__close" id="customerAuthClose" type="button" aria-label="إغلاق">×</button>
+      <section id="customerLoginView" aria-labelledby="customerLoginTitle">
+        <p class="section-tag">حساب العميل</p>
+        <h2 id="customerLoginTitle">تسجيل دخول العملاء</h2>
+        <p class="customer-auth-form__description">ادخلي إلى حسابك لمتابعة طلباتك، أو أنشئي حسابًا جديدًا.</p>
+        <form class="customer-auth-form" id="customerLoginForm">
+          <label for="customerLoginEmail">البريد الإلكتروني</label>
+          <input id="customerLoginEmail" name="email" type="email" autocomplete="username" required />
+          <label for="customerLoginPassword">كلمة المرور</label>
+          <input id="customerLoginPassword" name="password" type="password" autocomplete="current-password" required />
+          <button class="btn btn--gold btn--block" id="customerLoginSubmit" type="submit">دخول حسابي</button>
+        </form>
+        <p class="customer-auth-form__note" id="customerLoginNote" role="status" aria-live="polite"></p>
+        <button class="customer-auth-switch" id="showCustomerRegister" type="button">ليس لديك حساب؟ إنشاء حساب جديد</button>
+      </section>
+
+      <section id="customerRegisterView" aria-labelledby="customerRegisterTitle" hidden>
+        <p class="section-tag">أهلًا بك</p>
+        <h2 id="customerRegisterTitle">إنشاء حساب عميل</h2>
+        <p class="customer-auth-form__description">سجّلي بياناتك لمتابعة الطلبات التي ترسلينها من حسابك. لا يلزم تفعيل البريد حاليًا.</p>
+        <form class="customer-auth-form" id="customerRegisterForm">
+          <label for="customerName">الاسم</label>
+          <input id="customerName" name="name" autocomplete="name" maxlength="100" required />
+          <label for="customerEmail">البريد الإلكتروني</label>
+          <input id="customerEmail" name="email" type="email" autocomplete="email" maxlength="254" required />
+          <label for="customerPhone">رقم الهاتف</label>
+          <input id="customerPhone" name="phone" type="tel" autocomplete="tel" maxlength="40" required />
+          <label for="customerPassword">كلمة المرور (10 أحرف على الأقل)</label>
+          <input id="customerPassword" name="password" type="password" autocomplete="new-password" minlength="10" required />
+          <button class="btn btn--gold btn--block" id="customerRegisterSubmit" type="submit">إنشاء الحساب</button>
+        </form>
+        <p class="customer-auth-form__note" id="customerRegisterNote" role="status" aria-live="polite"></p>
+        <button class="customer-auth-switch" id="showCustomerLogin" type="button">لديك حساب؟ سجّلي الدخول</button>
+      </section>
+
+      <section id="customerAccountView" aria-labelledby="customerAccountTitle" hidden>
+        <p class="section-tag">حسابك</p>
+        <h2 id="customerAccountTitle">طلباتك</h2>
+        <p class="customer-auth-form__description" id="customerAccountName"></p>
+        <p class="customer-auth-form__note" id="customerOrdersNote" role="status" aria-live="polite"></p>
+        <div class="customer-orders-list" id="customerOrdersList" aria-live="polite"></div>
+        <button class="btn btn--dark btn--block" id="customerLogout" type="button">تسجيل الخروج</button>
+      </section>
+    </section>
   </dialog>
 
   <script src="gallery-assets.js" defer></script>

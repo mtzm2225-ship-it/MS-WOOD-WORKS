@@ -38,15 +38,26 @@ function ensureDatabaseSchema() {
   // نشارك تهيئة قاعدة البيانات بين الطلبات المتزامنة ونعيد المحاولة إذا فشلت.
   if (!schemaPromise) {
     schemaPromise = pool.query(`
+      CREATE TABLE IF NOT EXISTS customers (
+        id BIGSERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        email VARCHAR(254) NOT NULL UNIQUE,
+        phone VARCHAR(40) NOT NULL,
+        password_hash VARCHAR(100) NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
       CREATE TABLE IF NOT EXISTS orders (
         id BIGSERIAL PRIMARY KEY,
         name VARCHAR(100) NOT NULL,
         phone VARCHAR(40) NOT NULL,
         message VARCHAR(3000) NOT NULL,
+        customer_id BIGINT REFERENCES customers (id) ON DELETE SET NULL,
         status VARCHAR(20) NOT NULL DEFAULT 'new'
           CHECK (status IN ('new', 'contacted', 'in-progress', 'completed', 'cancelled')),
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_id BIGINT
+        REFERENCES customers (id) ON DELETE SET NULL;
       CREATE TABLE IF NOT EXISTS comments (
         id BIGSERIAL PRIMARY KEY,
         gallery_id VARCHAR(80) NOT NULL,
@@ -94,6 +105,7 @@ function ensureDatabaseSchema() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
       CREATE INDEX IF NOT EXISTS orders_created_at_idx ON orders (created_at DESC);
+      CREATE INDEX IF NOT EXISTS orders_customer_created_idx ON orders (customer_id, created_at DESC);
       CREATE INDEX IF NOT EXISTS comments_gallery_status_idx ON comments (gallery_id, status, created_at DESC);
       CREATE INDEX IF NOT EXISTS worker_attendance_date_idx ON worker_attendance (work_date, worker_id);
       CREATE INDEX IF NOT EXISTS worker_advances_date_idx ON worker_advances (advance_date, worker_id);
@@ -147,6 +159,12 @@ const loginLimiter = rateLimit({
   standardHeaders: 'draft-7',
   legacyHeaders: false
 });
+const customerAuthLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 8,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false
+});
 const submissionLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   limit: 12,
@@ -169,6 +187,13 @@ function requireAdmin(req, res, next) {
   // كل واجهات لوحة الإدارة محمية بالتحقق نفسه من جلسة الدخول.
   if (req.session.adminEmail !== adminEmail) {
     return res.status(401).json({ error: 'يلزم تسجيل الدخول.' });
+  }
+  next();
+}
+
+function requireCustomer(req, res, next) {
+  if (!Number.isSafeInteger(req.session.customerId)) {
+    return res.status(401).json({ error: 'سجّل الدخول إلى حسابك لمتابعة طلباتك.' });
   }
   next();
 }
@@ -204,6 +229,11 @@ function validRecordId(value) {
   return /^\d{1,18}$/.test(String(value || ''));
 }
 
+function validEmail(value) {
+  return typeof value === 'string' && value.length <= 254
+    && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
 app.post('/api/orders', submissionLimiter, async (req, res, next) => {
   try {
     const name = cleanText(req.body.name, 100);
@@ -214,8 +244,8 @@ app.post('/api/orders', submissionLimiter, async (req, res, next) => {
     }
 
     const result = await pool.query(
-      'INSERT INTO orders (name, phone, message) VALUES ($1, $2, $3) RETURNING id, created_at',
-      [name, phone, message]
+      'INSERT INTO orders (name, phone, message, customer_id) VALUES ($1, $2, $3, $4) RETURNING id, created_at',
+      [name, phone, message, req.session.customerId || null]
     );
     res.status(201).json({ id: result.rows[0].id, createdAt: result.rows[0].created_at });
   } catch (error) {
@@ -275,6 +305,120 @@ app.post('/api/comments', submissionLimiter, async (req, res, next) => {
   }
 });
 
+app.use('/api/customer', (req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+});
+
+app.post('/api/customer/register', customerAuthLimiter, async (req, res, next) => {
+  try {
+    const name = cleanText(req.body.name, 100);
+    const email = cleanText(req.body.email, 254).toLowerCase();
+    const phone = cleanText(req.body.phone, 40);
+    const password = typeof req.body.password === 'string' ? req.body.password : '';
+    if (name.length < 2 || !validEmail(email) || phone.length < 7 || password.length < 10 || password.length > 200) {
+      return res.status(400).json({ error: 'أكمل الاسم والبريد ورقم الهاتف، واجعل كلمة المرور 10 أحرف على الأقل.' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    const result = await pool.query(
+      `INSERT INTO customers (name, email, phone, password_hash)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, name, email, phone`,
+      [name, email, phone, passwordHash]
+    );
+    const customer = result.rows[0];
+    await new Promise((resolve, reject) => {
+      req.session.regenerate((error) => error ? reject(error) : resolve());
+    });
+    req.session.customerId = Number(customer.id);
+    req.session.customerName = customer.name;
+    req.session.customerEmail = customer.email;
+    req.session.customerPhone = customer.phone;
+    await new Promise((resolve, reject) => {
+      req.session.save((error) => error ? reject(error) : resolve());
+    });
+    res.status(201).json({ customer });
+  } catch (error) {
+    if (error.code === '23505') return res.status(409).json({ error: 'يوجد حساب مسجل بهذا البريد بالفعل.' });
+    next(error);
+  }
+});
+
+app.post('/api/customer/login', customerAuthLimiter, async (req, res, next) => {
+  try {
+    const email = cleanText(req.body.email, 254).toLowerCase();
+    const password = typeof req.body.password === 'string' ? req.body.password : '';
+    const result = validEmail(email)
+      ? await pool.query(
+        'SELECT id, name, email, phone, password_hash FROM customers WHERE email = $1',
+        [email]
+      )
+      : { rows: [] };
+    const customer = result.rows[0];
+    const valid = customer && await bcrypt.compare(password, customer.password_hash);
+    if (!valid) return res.status(401).json({ error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة.' });
+
+    await new Promise((resolve, reject) => {
+      req.session.regenerate((error) => error ? reject(error) : resolve());
+    });
+    req.session.customerId = Number(customer.id);
+    req.session.customerName = customer.name;
+    req.session.customerEmail = customer.email;
+    req.session.customerPhone = customer.phone;
+    await new Promise((resolve, reject) => {
+      req.session.save((error) => error ? reject(error) : resolve());
+    });
+    res.json({
+      customer: {
+        id: Number(customer.id),
+        name: customer.name,
+        email: customer.email,
+        phone: customer.phone
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get('/api/customer/session', (req, res) => {
+  const authenticated = Number.isSafeInteger(req.session.customerId);
+  res.json({
+    authenticated,
+    customer: authenticated ? {
+      id: req.session.customerId,
+      name: req.session.customerName,
+      email: req.session.customerEmail,
+      phone: req.session.customerPhone
+    } : null
+  });
+});
+
+app.post('/api/customer/logout', requireCustomer, (req, res, next) => {
+  req.session.destroy((error) => {
+    if (error) return next(error);
+    res.clearCookie('mswood.sid', { httpOnly: true, secure: isProduction, sameSite: 'strict' });
+    res.status(204).end();
+  });
+});
+
+app.get('/api/customer/orders', requireCustomer, async (req, res, next) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, name, phone, message, status, created_at
+       FROM orders
+       WHERE customer_id = $1
+       ORDER BY created_at DESC
+       LIMIT 100`,
+      [req.session.customerId]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.post('/api/admin/login', loginLimiter, async (req, res, next) => {
   try {
     const email = cleanText(req.body.email, 254).toLowerCase();
@@ -291,23 +435,6 @@ app.post('/api/admin/login', loginLimiter, async (req, res, next) => {
       req.session.save((error) => error ? reject(error) : resolve());
     });
     res.json({ email: adminEmail });
-  } catch (error) {
-    next(error);
-  }
-});
-
-app.post('/api/admin/verify-entry', loginLimiter, async (req, res, next) => {
-  try {
-    const email = cleanText(req.body.email, 254).toLowerCase();
-    const password = typeof req.body.password === 'string' ? req.body.password : '';
-    const valid = email === adminEmail && await bcrypt.compare(password, adminPasswordHash);
-    if (!valid) return res.status(401).json({ error: 'البريد أو كلمة المرور غير صحيحة.' });
-
-    await new Promise((resolve, reject) => {
-      req.session.destroy((error) => error ? reject(error) : resolve());
-    });
-    res.clearCookie('mswood.sid', { httpOnly: true, secure: isProduction, sameSite: 'strict' });
-    res.json({ verified: true });
   } catch (error) {
     next(error);
   }

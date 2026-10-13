@@ -26,6 +26,8 @@ const order = {
   status: 'new',
   created_at: '2026-10-12T00:00:00.000Z'
 };
+const customers = [];
+const storedOrders = [{ ...order, customer_id: null }];
 const workCategories = [];
 const workers = [];
 const attendance = [];
@@ -171,8 +173,45 @@ class TestPool {
         rowCount: workers.filter((worker) => worker.active).length
       };
     }
+    if (query.startsWith('INSERT INTO customers')) {
+      if (customers.some((customer) => customer.email === values[1])) {
+        throw Object.assign(new Error('duplicate customer email'), { code: '23505' });
+      }
+      const customer = {
+        id: customers.length + 1,
+        name: values[0],
+        email: values[1],
+        phone: values[2],
+        password_hash: values[3]
+      };
+      customers.push(customer);
+      return {
+        rows: [{ id: customer.id, name: customer.name, email: customer.email, phone: customer.phone }],
+        rowCount: 1
+      };
+    }
+    if (query.startsWith('SELECT id, name, email, phone, password_hash FROM customers')) {
+      const customer = customers.find((item) => item.email === values[0]);
+      return { rows: customer ? [customer] : [], rowCount: Number(Boolean(customer)) };
+    }
+    if (query.startsWith('SELECT id, name, phone, message, status, created_at FROM orders WHERE customer_id')) {
+      const customerOrders = storedOrders
+        .filter((record) => String(record.customer_id) === String(values[0]))
+        .sort((first, second) => second.id - first.id);
+      return { rows: customerOrders, rowCount: customerOrders.length };
+    }
     if (query.startsWith('INSERT INTO orders')) {
-      return { rows: [{ id: order.id, created_at: order.created_at }], rowCount: 1 };
+      const createdOrder = {
+        id: storedOrders.length + 1,
+        name: values[0],
+        phone: values[1],
+        message: values[2],
+        customer_id: values[3] || null,
+        status: 'new',
+        created_at: '2026-10-13T00:00:00.000Z'
+      };
+      storedOrders.push(createdOrder);
+      return { rows: [{ id: createdOrder.id, created_at: createdOrder.created_at }], rowCount: 1 };
     }
     if (query.startsWith('INSERT INTO comments')) {
       return { rows: [], rowCount: 1 };
@@ -190,13 +229,15 @@ class TestPool {
       };
     }
     if (query.startsWith('SELECT id, name, phone, message, status, created_at FROM orders')) {
-      return { rows: [order], rowCount: 1 };
+      return { rows: storedOrders, rowCount: storedOrders.length };
     }
     if (query.startsWith('SELECT id, gallery_id, name, body, status, created_at FROM comments')) {
       return { rows: [approvedComment], rowCount: 1 };
     }
     if (query.startsWith('UPDATE orders')) {
-      return { rows: [{ id: Number(values[1]), status: values[0] }], rowCount: 1 };
+      const target = storedOrders.find((record) => record.id === Number(values[1]));
+      if (target) target.status = values[0];
+      return { rows: target ? [{ id: target.id, status: target.status }] : [], rowCount: Number(Boolean(target)) };
     }
     if (query.startsWith('UPDATE comments')) {
       return { rows: [{ id: Number(values[1]), status: values[0] }], rowCount: 1 };
@@ -271,13 +312,16 @@ test('serves the website, admin dashboard, and assets', async () => {
     assert.match(await admin.text(), /إدارة MS Woodworks/);
   }
 
-  assert.match(homePage, /id="adminLoginOpen"/);
-  assert.match(homePage, /id="adminLoginForm"/);
+  assert.match(homePage, /id="customerAccountOpen"/);
+  assert.match(homePage, /id="customerLoginForm"/);
+  assert.match(homePage, /id="customerRegisterForm"/);
+  assert.match(homePage, /id="customerAccountView"/);
   const homeScript = await request('/ms.js');
   assert.equal(homeScript.status, 200);
   const homeScriptText = await homeScript.text();
-  assert.match(homeScriptText, /fetch\('\/api\/admin\/verify-entry'/);
-  assert.match(homeScriptText, /window\.location\.assign\('\/admin'\)/);
+  assert.match(homeScriptText, /endpoint: '\/api\/customer\/login'/);
+  assert.match(homeScriptText, /endpoint: '\/api\/customer\/register'/);
+  assert.match(homeScriptText, /fetch\('\/api\/customer\/orders'/);
 
   for (const asset of ['/ms.css', '/ms.js', '/admin.css', '/admin.js', '/gallery-assets.js']) {
     const response = await request(asset);
@@ -316,6 +360,114 @@ test('validates and stores public orders and comments', async () => {
   assert.equal((await customerReviews.json())[0].gallery_id, 'walnut-desk');
 });
 
+test('registers customers and restricts order history to the signed-in account', async () => {
+  const unauthorized = await request('/api/customer/orders');
+  assert.equal(unauthorized.status, 401);
+
+  const invalidRegistration = await request('/api/customer/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: 'عميل جديد',
+      email: 'new@example.test',
+      phone: '+201000000000',
+      password: 'short'
+    })
+  });
+  assert.equal(invalidRegistration.status, 400);
+
+  const registration = await request('/api/customer/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: 'عميل جديد',
+      email: 'New.Customer@example.test',
+      phone: '+201000000000',
+      password: 'customer-password-long'
+    })
+  });
+  assert.equal(registration.status, 201);
+  const registrationResult = await registration.json();
+  assert.equal(registrationResult.customer.email, 'new.customer@example.test');
+  assert.notEqual(customers[0].password_hash, 'customer-password-long');
+  const customerCookie = registration.headers.getSetCookie().map((value) => value.split(';')[0]).join('; ');
+
+  const sessionResponse = await request('/api/customer/session', { headers: { Cookie: customerCookie } });
+  assert.equal((await sessionResponse.json()).authenticated, true);
+  const customerAdminData = await request('/api/admin/summary', { headers: { Cookie: customerCookie } });
+  assert.equal(customerAdminData.status, 401);
+
+  const customerOrder = await request('/api/orders', {
+    method: 'POST',
+    headers: { Cookie: customerCookie, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: 'عميل جديد',
+      phone: '+201000000000',
+      message: 'طلب أثاث مرتبط بحساب العميل'
+    })
+  });
+  assert.equal(customerOrder.status, 201);
+
+  const accountOrders = await request('/api/customer/orders', { headers: { Cookie: customerCookie } });
+  assert.equal(accountOrders.status, 200);
+  assert.equal(accountOrders.headers.get('cache-control'), 'no-store');
+  const customerRecords = await accountOrders.json();
+  assert.equal(customerRecords.length, 1);
+  assert.equal(customerRecords[0].message, 'طلب أثاث مرتبط بحساب العميل');
+
+  const otherRegistration = await request('/api/customer/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: 'عميل آخر',
+      email: 'other.customer@example.test',
+      phone: '+201000000001',
+      password: 'another-customer-password'
+    })
+  });
+  assert.equal(otherRegistration.status, 201);
+  const otherCookie = otherRegistration.headers.getSetCookie().map((value) => value.split(';')[0]).join('; ');
+  const otherOrders = await request('/api/customer/orders', { headers: { Cookie: otherCookie } });
+  assert.deepEqual(await otherOrders.json(), []);
+
+  const duplicateRegistration = await request('/api/customer/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: 'عميل جديد',
+      email: 'new.customer@example.test',
+      phone: '+201000000000',
+      password: 'customer-password-long'
+    })
+  });
+  assert.equal(duplicateRegistration.status, 409);
+
+  const login = await request('/api/customer/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'NEW.CUSTOMER@example.test', password: 'customer-password-long' })
+  });
+  assert.equal(login.status, 200);
+  const loginCookie = login.headers.getSetCookie().map((value) => value.split(';')[0]).join('; ');
+  const afterLoginOrders = await request('/api/customer/orders', { headers: { Cookie: loginCookie } });
+  assert.equal((await afterLoginOrders.json()).length, 1);
+
+  const wrongPassword = await request('/api/customer/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'new.customer@example.test', password: 'wrong-password' })
+  });
+  assert.equal(wrongPassword.status, 401);
+
+  const logout = await request('/api/customer/logout', {
+    method: 'POST',
+    headers: { Cookie: loginCookie }
+  });
+  assert.equal(logout.status, 204);
+  const afterLogout = await request('/api/customer/orders', { headers: { Cookie: loginCookie } });
+  assert.equal(afterLogout.status, 401);
+});
+
 test('protects admin data and supports dashboard sign-in and updates', async () => {
   const unauthorized = await request('/api/admin/orders');
   assert.equal(unauthorized.status, 401);
@@ -327,40 +479,16 @@ test('protects admin data and supports dashboard sign-in and updates', async () 
   });
   assert.equal(invalidLogin.status, 401);
 
-  const invalidEntry = await request('/api/admin/verify-entry', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: process.env.ADMIN_EMAIL, password: 'incorrect-password' })
-  });
-  assert.equal(invalidEntry.status, 401);
-
   const login = await request('/api/admin/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email: process.env.ADMIN_EMAIL, password: process.env.ADMIN_PASSWORD })
   });
   assert.equal(login.status, 200);
-  const cookie = login.headers.getSetCookie().map((value) => value.split(';')[0]).join('; ');
-  assert.ok(cookie.includes('mswood.sid='));
-
-  const verifyEntry = await request('/api/admin/verify-entry', {
-    method: 'POST',
-    headers: { Cookie: cookie, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: process.env.ADMIN_EMAIL, password: process.env.ADMIN_PASSWORD })
-  });
-  assert.equal(verifyEntry.status, 200);
-  assert.equal((await verifyEntry.json()).verified, true);
-  assert.match(verifyEntry.headers.get('set-cookie'), /mswood\.sid=;/);
-  const sessionAfterEntry = await request('/api/admin/session', { headers: { Cookie: cookie } });
-  assert.equal((await sessionAfterEntry.json()).authenticated, false);
-
-  const loginAfterEntry = await request('/api/admin/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: process.env.ADMIN_EMAIL, password: process.env.ADMIN_PASSWORD })
-  });
-  assert.equal(loginAfterEntry.status, 200);
-  const adminCookie = loginAfterEntry.headers.getSetCookie().map((value) => value.split(';')[0]).join('; ');
+  const adminCookie = login.headers.getSetCookie().map((value) => value.split(';')[0]).join('; ');
+  assert.ok(adminCookie.includes('mswood.sid='));
+  const adminCustomerHistory = await request('/api/customer/orders', { headers: { Cookie: adminCookie } });
+  assert.equal(adminCustomerHistory.status, 401);
 
   const dashboard = await request('/api/admin/summary', { headers: { Cookie: adminCookie } });
   assert.equal(dashboard.status, 200);

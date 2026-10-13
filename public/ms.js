@@ -18,9 +18,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const commentForm = document.getElementById('galleryCommentForm');
   const commentList = document.getElementById('galleryCommentList');
   const commentNote = document.getElementById('galleryCommentNote');
-  const adminLoginDialog = document.getElementById('adminLoginDialog');
-  const adminLoginForm = document.getElementById('adminLoginForm');
-  const adminLoginNote = document.getElementById('adminLoginNote');
+  const customerAuthDialog = document.getElementById('customerAuthDialog');
+  const customerLoginForm = document.getElementById('customerLoginForm');
+  const customerLoginNote = document.getElementById('customerLoginNote');
+  const customerRegisterForm = document.getElementById('customerRegisterForm');
+  const customerRegisterNote = document.getElementById('customerRegisterNote');
+  const customerOrdersList = document.getElementById('customerOrdersList');
+  const customerOrdersNote = document.getElementById('customerOrdersNote');
+  const customerStatusLabels = {
+    new: 'جديد',
+    contacted: 'تم التواصل',
+    'in-progress': 'قيد التنفيذ',
+    completed: 'مكتمل',
+    cancelled: 'ملغي'
+  };
+  let customerAccount = null;
 
   const galleryAssets = window.MSWoodGalleryAssets.gallery;
   const reservedPhotoSlots = 2;
@@ -346,46 +358,165 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  if (adminLoginDialog && adminLoginForm && adminLoginNote) {
-    document.getElementById('adminLoginOpen').addEventListener('click', () => {
-      adminLoginNote.textContent = '';
-      adminLoginDialog.showModal();
-    });
+  if (customerAuthDialog && customerLoginForm && customerLoginNote) {
+    const loginView = document.getElementById('customerLoginView');
+    const registerView = document.getElementById('customerRegisterView');
+    const accountView = document.getElementById('customerAccountView');
+    const showCustomerView = (view) => {
+      loginView.hidden = view !== loginView;
+      registerView.hidden = view !== registerView;
+      accountView.hidden = view !== accountView;
+      customerAuthDialog.setAttribute('aria-labelledby', view.querySelector('h2').id);
+    };
 
-    document.getElementById('adminLoginClose').addEventListener('click', () => {
-      adminLoginDialog.close();
-    });
+    const renderCustomerOrders = (orders) => {
+      customerOrdersList.replaceChildren();
+      if (!orders.length) {
+        const empty = document.createElement('p');
+        empty.className = 'customer-orders__empty';
+        empty.textContent = 'لا توجد طلبات مرتبطة بحسابك بعد. يمكنك إرسال طلب من نموذج تواصل معنا.';
+        customerOrdersList.append(empty);
+        return;
+      }
 
-    adminLoginDialog.addEventListener('click', (event) => {
-      if (event.target === adminLoginDialog) adminLoginDialog.close();
-    });
+      orders.forEach((order) => {
+        const card = document.createElement('article');
+        card.className = 'customer-order';
+        const heading = document.createElement('div');
+        heading.className = 'customer-order__heading';
+        const title = document.createElement('strong');
+        title.textContent = `طلب رقم ${order.id}`;
+        const status = document.createElement('span');
+        status.className = 'customer-order__status';
+        status.textContent = customerStatusLabels[order.status] || order.status;
+        heading.append(title, status);
+        const message = document.createElement('p');
+        message.textContent = order.message;
+        const date = document.createElement('time');
+        date.dateTime = order.created_at;
+        date.textContent = new Intl.DateTimeFormat('ar-EG', { dateStyle: 'medium' }).format(new Date(order.created_at));
+        card.append(heading, message, date);
+        customerOrdersList.append(card);
+      });
+    };
 
-    adminLoginForm.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      adminLoginNote.textContent = '';
-      const submit = document.getElementById('adminLoginSubmit');
-      submit.disabled = true;
-      const formData = new FormData(adminLoginForm);
+    const loadCustomerAccount = async () => {
+      const response = await fetch('/api/customer/session', { credentials: 'same-origin' });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'تعذر تحميل الحساب.');
+      customerAccount = result.authenticated ? result.customer : null;
+      document.getElementById('customerAccountOpen').textContent = customerAccount
+        ? `حسابي · ${customerAccount.name}`
+        : 'دخول العملاء';
+      if (!customerAccount) return;
 
+      document.getElementById('customerAccountName').textContent =
+        `${customerAccount.name} · ${customerAccount.email}`;
+      document.getElementById('cf-name').value = customerAccount.name;
+      document.getElementById('cf-phone').value = customerAccount.phone;
+      const ordersResponse = await fetch('/api/customer/orders', { credentials: 'same-origin' });
+      const orders = await ordersResponse.json().catch(() => ({}));
+      if (!ordersResponse.ok) throw new Error(orders.error || 'تعذر تحميل طلباتك.');
+      renderCustomerOrders(orders);
+    };
+
+    document.getElementById('customerAccountOpen').addEventListener('click', async () => {
+      customerLoginNote.textContent = '';
+      customerRegisterNote.textContent = '';
+      customerOrdersNote.textContent = '';
       try {
-        const response = await fetch('/api/admin/verify-entry', {
+        await loadCustomerAccount();
+        showCustomerView(customerAccount ? accountView : loginView);
+      } catch (error) {
+        showCustomerView(customerAccount ? accountView : loginView);
+        (customerAccount ? customerOrdersNote : customerLoginNote).textContent = error.message;
+      }
+      customerAuthDialog.showModal();
+    });
+
+    document.getElementById('customerAuthClose').addEventListener('click', () => customerAuthDialog.close());
+    customerAuthDialog.addEventListener('click', (event) => {
+      if (event.target === customerAuthDialog) customerAuthDialog.close();
+    });
+    document.getElementById('showCustomerRegister').addEventListener('click', () => {
+      customerLoginNote.textContent = '';
+      showCustomerView(registerView);
+    });
+    document.getElementById('showCustomerLogin').addEventListener('click', () => {
+      customerRegisterNote.textContent = '';
+      showCustomerView(loginView);
+    });
+
+    const submitCustomerAuth = async ({ form: authForm, endpoint, note, submitId }) => {
+      note.textContent = '';
+      const submit = document.getElementById(submitId);
+      submit.disabled = true;
+      const values = Object.fromEntries(new FormData(authForm).entries());
+      try {
+        const response = await fetch(endpoint, {
           method: 'POST',
           credentials: 'same-origin',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: formData.get('email'),
-            password: formData.get('password')
-          })
+          body: JSON.stringify(values)
         });
         const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.error || 'تعذر تسجيل الدخول.');
-        window.location.assign('/admin');
+        if (!response.ok) throw new Error(result.error || 'تعذر إكمال الطلب.');
+        customerAccount = result.customer;
+        authForm.reset();
+        await loadCustomerAccount();
+        showCustomerView(accountView);
       } catch (error) {
-        adminLoginNote.textContent = error instanceof TypeError
+        note.textContent = error instanceof TypeError
           ? 'تعذر الاتصال بالخادم. افتحي الموقع من عنوانه المحلي أو المستضاف.'
           : error.message;
+      } finally {
         submit.disabled = false;
       }
+    };
+
+    customerLoginForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      submitCustomerAuth({
+        form: customerLoginForm,
+        endpoint: '/api/customer/login',
+        note: customerLoginNote,
+        submitId: 'customerLoginSubmit'
+      });
+    });
+
+    customerRegisterForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      submitCustomerAuth({
+        form: customerRegisterForm,
+        endpoint: '/api/customer/register',
+        note: customerRegisterNote,
+        submitId: 'customerRegisterSubmit'
+      });
+    });
+
+    document.getElementById('customerLogout').addEventListener('click', async () => {
+      customerOrdersNote.textContent = '';
+      try {
+        const response = await fetch('/api/customer/logout', {
+          method: 'POST',
+          credentials: 'same-origin'
+        });
+        if (!response.ok) {
+          const result = await response.json().catch(() => ({}));
+          throw new Error(result.error || 'تعذر تسجيل الخروج.');
+        }
+        customerAccount = null;
+        document.getElementById('customerAccountOpen').textContent = 'دخول العملاء';
+        document.getElementById('cf-name').value = '';
+        document.getElementById('cf-phone').value = '';
+        showCustomerView(loginView);
+      } catch (error) {
+        customerOrdersNote.textContent = error.message;
+      }
+    });
+
+    loadCustomerAccount().catch((error) => {
+      customerLoginNote.textContent = error.message;
     });
   }
 
