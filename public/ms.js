@@ -19,15 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const commentList = document.getElementById('galleryCommentList');
   const commentNote = document.getElementById('galleryCommentNote');
 
-  const galleryAssets = [
-    { id: 'walnut-desk', src: 'img/WhatsApp Image 2026-10-12 at 11.46.46 AM.jpeg', alt: 'مكتب خشبي فاخر', category: 'أثاث فاخر', title: 'مكتب الجوز التنفيذي' },
-    { id: 'workshop-details', src: 'img/WhatsApp Image 2026-10-12 at 11.46.46 AM (1).jpeg', alt: 'تفاصيل النجارة داخل الورشة', category: 'الورشة', title: 'تفاصيل الصنعة' },
-    { id: 'custom-boards', src: 'img/WhatsApp Image 2026-10-12 at 11.46.46 AM (2).jpeg', alt: 'قطع خشبية مخصصة', category: 'تصميم', title: 'ألواح مخصصة' },
-    { id: 'fine-interior', src: 'img/WhatsApp Image 2026-10-12 at 11.46.46 AM (3).jpeg', alt: 'أثاث خشبي فاخر', category: 'ديكور', title: 'لمسات فاخرة' },
-    { id: 'hand-finish', src: 'img/WhatsApp Image 2026-10-12 at 11.46.46 AM (4).jpeg', alt: 'تفاصيل تشطيب الخشب', category: 'تشطيب', title: 'تلميع يدوي' },
-    { id: 'wood-detail', src: 'img/WhatsApp Image 2026-10-12 at 11.46.47 AM (1).jpeg', alt: 'قطع خشبية جاهزة للتشطيب', category: 'الحرفية', title: 'الخشب يميل للتفاصيل' },
-    { id: 'modern-space', src: 'img/WhatsApp Image 2026-10-12 at 11.46.47 AM (2).jpeg', alt: 'أثاث خشبي داخل مسرح منزلي', category: 'تجهيز', title: 'مساحات معاصرة' }
-  ];
+  const galleryAssets = window.MSWoodGalleryAssets.gallery;
   const reservedPhotoSlots = 2;
 
   if (customerReviewForm) {
@@ -44,7 +36,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const renderGallery = () => {
     if (!galleryGrid) return;
 
-    const layouts = ['tile--feature', 'tile--side', 'tile--side', 'tile--small', 'tile--small', 'tile--small', 'tile--wide'];
+    galleryGrid.classList.add('gallery__grid--curated');
+    const layouts = ['tile--feature', 'tile--side', 'tile--side'];
     const photoTiles = galleryAssets.map((item, index) => {
       return `
         <figure class="tile ${layouts[index] || 'tile--small'} reveal" data-delay="${(index % 5) + 1}">
@@ -60,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     const emptyTiles = Array.from(
       { length: Math.max(0, reservedPhotoSlots) },
-      () => '<figure class="tile tile--empty" aria-hidden="true"></figure>'
+      (_, index) => `<figure class="tile tile--empty" aria-label="مكان مخصص لصورة مشروع قادم"><span>مشروع قادم <b>0${index + 1}</b></span></figure>`
     );
     galleryGrid.innerHTML = [...photoTiles, ...emptyTiles].join('');
 

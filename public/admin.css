@@ -228,6 +228,13 @@ h2 { margin-bottom: 4px; font-size: 1.4rem; }
 .admin-footer span { padding-inline: 5px; color: var(--admin-gold); }
 .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
+.admin-header { box-shadow: 0 8px 24px rgba(31, 23, 16, 0.12); }
+.admin-brand img { object-position: center 30%; }
+.login-panel, .summary-item, .record { border-radius: 14px; }
+.button { border-radius: 10px; }
+.button--primary { background: var(--admin-wood); }
+.button--primary:hover { background: #513522; }
+
 @media (max-width: 720px) {
   .admin-main { margin-top: 30px; }
   .page-heading, .view-heading { align-items: stretch; flex-direction: column; }
