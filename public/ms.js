@@ -368,7 +368,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const formData = new FormData(adminLoginForm);
 
       try {
-        const response = await fetch('/api/admin/login', {
+        const response = await fetch('/api/admin/verify-entry', {
           method: 'POST',
           credentials: 'same-origin',
           headers: { 'Content-Type': 'application/json' },

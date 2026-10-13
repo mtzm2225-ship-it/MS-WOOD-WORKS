@@ -296,6 +296,23 @@ app.post('/api/admin/login', loginLimiter, async (req, res, next) => {
   }
 });
 
+app.post('/api/admin/verify-entry', loginLimiter, async (req, res, next) => {
+  try {
+    const email = cleanText(req.body.email, 254).toLowerCase();
+    const password = typeof req.body.password === 'string' ? req.body.password : '';
+    const valid = email === adminEmail && await bcrypt.compare(password, adminPasswordHash);
+    if (!valid) return res.status(401).json({ error: 'البريد أو كلمة المرور غير صحيحة.' });
+
+    await new Promise((resolve, reject) => {
+      req.session.destroy((error) => error ? reject(error) : resolve());
+    });
+    res.clearCookie('mswood.sid', { httpOnly: true, secure: isProduction, sameSite: 'strict' });
+    res.json({ verified: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.get('/api/admin/session', (req, res) => {
   res.json({ authenticated: req.session.adminEmail === adminEmail, email: req.session.adminEmail || null });
 });

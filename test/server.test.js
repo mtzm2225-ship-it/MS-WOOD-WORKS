@@ -276,7 +276,7 @@ test('serves the website, admin dashboard, and assets', async () => {
   const homeScript = await request('/ms.js');
   assert.equal(homeScript.status, 200);
   const homeScriptText = await homeScript.text();
-  assert.match(homeScriptText, /fetch\('\/api\/admin\/login'/);
+  assert.match(homeScriptText, /fetch\('\/api\/admin\/verify-entry'/);
   assert.match(homeScriptText, /window\.location\.assign\('\/admin'\)/);
 
   for (const asset of ['/ms.css', '/ms.js', '/admin.css', '/admin.js', '/gallery-assets.js']) {
@@ -327,6 +327,13 @@ test('protects admin data and supports dashboard sign-in and updates', async () 
   });
   assert.equal(invalidLogin.status, 401);
 
+  const invalidEntry = await request('/api/admin/verify-entry', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: process.env.ADMIN_EMAIL, password: 'incorrect-password' })
+  });
+  assert.equal(invalidEntry.status, 401);
+
   const login = await request('/api/admin/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -336,27 +343,46 @@ test('protects admin data and supports dashboard sign-in and updates', async () 
   const cookie = login.headers.getSetCookie().map((value) => value.split(';')[0]).join('; ');
   assert.ok(cookie.includes('mswood.sid='));
 
-  const dashboard = await request('/api/admin/summary', { headers: { Cookie: cookie } });
+  const verifyEntry = await request('/api/admin/verify-entry', {
+    method: 'POST',
+    headers: { Cookie: cookie, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: process.env.ADMIN_EMAIL, password: process.env.ADMIN_PASSWORD })
+  });
+  assert.equal(verifyEntry.status, 200);
+  assert.equal((await verifyEntry.json()).verified, true);
+  assert.match(verifyEntry.headers.get('set-cookie'), /mswood\.sid=;/);
+  const sessionAfterEntry = await request('/api/admin/session', { headers: { Cookie: cookie } });
+  assert.equal((await sessionAfterEntry.json()).authenticated, false);
+
+  const loginAfterEntry = await request('/api/admin/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: process.env.ADMIN_EMAIL, password: process.env.ADMIN_PASSWORD })
+  });
+  assert.equal(loginAfterEntry.status, 200);
+  const adminCookie = loginAfterEntry.headers.getSetCookie().map((value) => value.split(';')[0]).join('; ');
+
+  const dashboard = await request('/api/admin/summary', { headers: { Cookie: adminCookie } });
   assert.equal(dashboard.status, 200);
   assert.equal((await dashboard.json()).orders_total, 1);
 
-  const orders = await request('/api/admin/orders', { headers: { Cookie: cookie } });
+  const orders = await request('/api/admin/orders', { headers: { Cookie: adminCookie } });
   assert.equal(orders.status, 200);
 
   const updateOrder = await request('/api/admin/orders/1', {
     method: 'PATCH',
-    headers: { Cookie: cookie, 'Content-Type': 'application/json' },
+    headers: { Cookie: adminCookie, 'Content-Type': 'application/json' },
     body: JSON.stringify({ status: 'completed' })
   });
   assert.equal(updateOrder.status, 200);
   assert.equal((await updateOrder.json()).status, 'completed');
 
-  const comments = await request('/api/admin/comments', { headers: { Cookie: cookie } });
+  const comments = await request('/api/admin/comments', { headers: { Cookie: adminCookie } });
   assert.equal(comments.status, 200);
 
   const updateComment = await request('/api/admin/comments/1', {
     method: 'PATCH',
-    headers: { Cookie: cookie, 'Content-Type': 'application/json' },
+    headers: { Cookie: adminCookie, 'Content-Type': 'application/json' },
     body: JSON.stringify({ status: 'rejected' })
   });
   assert.equal(updateComment.status, 200);
