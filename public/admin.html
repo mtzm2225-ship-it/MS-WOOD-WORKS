@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" content="#211a15" />
+  <title>إدارة MS Woodworks</title>
+  <link rel="icon" type="image/jpeg" href="../img/WhatsApp Image 2026-10-12 at 11.46.46 AM (2).jpeg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../admin.css" />
+</head>
+<body>
+  <header class="admin-header">
+    <a class="admin-brand" href="../" aria-label="العودة إلى موقع MS Woodworks">
+      <img src="../img/WhatsApp Image 2026-10-12 at 11.46.46 AM (2).jpeg" alt="شعار MS Woodworks" />
+      <span><strong>MS Woodworks</strong><small>إدارة الموقع</small></span>
+    </a>
+    <a class="site-link" href="../">عرض الموقع <span aria-hidden="true">↗</span></a>
+  </header>
+
+  <main class="admin-main">
+    <section class="login-panel" id="loginPanel" aria-labelledby="loginTitle" hidden>
+      <p class="eyebrow">مساحة خاصة</p>
+      <h1 id="loginTitle">تسجيل دخول الإدارة</h1>
+      <p class="muted">أدخل بيانات الإدارة للوصول إلى الطلبات والتعليقات.</p>
+      <form id="loginForm" class="login-form">
+        <label for="adminEmail">البريد الإلكتروني</label>
+        <input id="adminEmail" name="email" type="email" autocomplete="username" required />
+        <label for="adminPassword">كلمة المرور</label>
+        <input id="adminPassword" name="password" type="password" autocomplete="current-password" required />
+        <button class="button button--primary" type="submit">دخول آمن</button>
+        <p class="form-message" id="loginMessage" role="status"></p>
+      </form>
+    </section>
+
+    <section id="dashboard" hidden>
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">مساحة العمل</p>
+          <h1>لوحة الإدارة</h1>
+          <p class="muted">متابعة استفسارات العملاء ومراجعة التعليقات المنشورة على صور المعرض.</p>
+        </div>
+        <button class="button button--quiet" id="logoutButton" type="button">تسجيل الخروج</button>
+      </div>
+
+      <section class="summary-grid" aria-label="ملخص النشاط">
+        <article class="summary-item"><span>كل الطلبات</span><strong id="ordersTotal">0</strong></article>
+        <article class="summary-item"><span>طلبات جديدة</span><strong id="ordersNew">0</strong></article>
+        <article class="summary-item"><span>تعليقات تنتظر المراجعة</span><strong id="commentsPending">0</strong></article>
+        <article class="summary-item"><span>تعليقات منشورة</span><strong id="commentsApproved">0</strong></article>
+      </section>
+
+      <nav class="dashboard-tabs" aria-label="أقسام الإدارة">
+        <button class="tab-button is-active" type="button" data-view="ordersView" aria-selected="true">الطلبات</button>
+        <button class="tab-button" type="button" data-view="commentsView" aria-selected="false">تعليقات الصور</button>
+      </nav>
+
+      <section class="dashboard-view" id="ordersView" aria-labelledby="ordersTitle">
+        <div class="view-heading">
+          <div><h2 id="ordersTitle">طلبات العملاء</h2><p class="muted">حدّث حالة الطلب بعد التواصل مع العميل.</p></div>
+          <div class="filters">
+            <label class="visually-hidden" for="orderSearch">ابحث في الطلبات</label>
+            <input id="orderSearch" type="search" placeholder="بحث بالاسم أو الهاتف" />
+            <label class="visually-hidden" for="orderStatusFilter">تصفية حسب الحالة</label>
+            <select id="orderStatusFilter">
+              <option value="all">كل الحالات</option>
+              <option value="new">جديد</option>
+              <option value="contacted">تم التواصل</option>
+              <option value="in-progress">قيد التنفيذ</option>
+              <option value="completed">مكتمل</option>
+              <option value="cancelled">ملغي</option>
+            </select>
+          </div>
+        </div>
+        <p class="inline-message" id="ordersMessage" role="status"></p>
+        <div class="records-list" id="ordersList" aria-live="polite"></div>
+      </section>
+
+      <section class="dashboard-view" id="commentsView" aria-labelledby="commentsTitle" hidden>
+        <div class="view-heading">
+          <div><h2 id="commentsTitle">تعليقات صور المعرض</h2><p class="muted">لن تظهر تعليقات العملاء على الموقع إلا بعد اعتمادها.</p></div>
+          <label class="visually-hidden" for="commentStatusFilter">تصفية حسب حالة التعليق</label>
+          <select id="commentStatusFilter">
+            <option value="pending">بانتظار المراجعة</option>
+            <option value="approved">منشور</option>
+            <option value="rejected">مرفوض</option>
+            <option value="all">كل الحالات</option>
+          </select>
+        </div>
+        <p class="inline-message" id="commentsMessage" role="status"></p>
+        <div class="records-list" id="commentsList" aria-live="polite"></div>
+      </section>
+    </section>
+  </main>
+
+  <footer class="admin-footer">MS Woodworks <span>·</span> لوحة إدارة خاصة</footer>
+  <script src="../admin.js" defer></script>
+</body>
+</html>
