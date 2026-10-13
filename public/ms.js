@@ -11,6 +11,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('contactForm');
   const formNote = document.getElementById('formNote');
   const galleryGrid = document.getElementById('galleryGrid');
+  const customerReviews = document.getElementById('customerReviews');
+  const customerReviewForm = document.getElementById('customerReviewForm');
+  const customerReviewNote = document.getElementById('customerReviewNote');
   const commentsDialog = document.getElementById('galleryComments');
   const commentForm = document.getElementById('galleryCommentForm');
   const commentList = document.getElementById('galleryCommentList');
@@ -27,14 +30,24 @@ document.addEventListener('DOMContentLoaded', () => {
   ];
   const reservedPhotoSlots = 2;
 
+  if (customerReviewForm) {
+    const projectSelect = customerReviewForm.elements.namedItem('galleryId');
+    galleryAssets.forEach((asset) => {
+      const option = document.createElement('option');
+      option.value = asset.id;
+      option.textContent = asset.title;
+      projectSelect.append(option);
+    });
+  }
+
   // نستخدم مستمعًا واحدًا للمعرض لأن بطاقاته تُنشأ ديناميكيًا.
   const renderGallery = () => {
     if (!galleryGrid) return;
 
+    const layouts = ['tile--feature', 'tile--side', 'tile--side', 'tile--small', 'tile--small', 'tile--small', 'tile--wide'];
     const photoTiles = galleryAssets.map((item, index) => {
-      const wide = index % 4 === 0 || index % 5 === 0 ? 'tile--wide' : '';
       return `
-        <figure class="tile ${wide} reveal" data-delay="${(index % 5) + 1}">
+        <figure class="tile ${layouts[index] || 'tile--small'} reveal" data-delay="${(index % 5) + 1}">
           <img src="${item.src}" alt="${item.alt}" loading="lazy" />
           <figcaption class="tile__cap">
             <span class="tile__cat">${item.category}</span>
@@ -96,6 +109,77 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
+  const renderCustomerReviews = (reviews) => {
+    if (!customerReviews) return;
+    customerReviews.replaceChildren();
+
+    if (!reviews.length) {
+      const empty = document.createElement('p');
+      empty.className = 'customer-reviews__empty';
+      empty.textContent = 'لا توجد آراء منشورة حتى الآن. يسعدنا أن تشاركنا تجربتك بعد مشاهدة أعمالنا.';
+      customerReviews.append(empty);
+      return;
+    }
+
+    reviews.slice(0, 6).forEach((review) => {
+      const card = document.createElement('article');
+      card.className = 'customer-review';
+
+      const mark = document.createElement('span');
+      mark.className = 'customer-review__mark';
+      mark.setAttribute('aria-hidden', 'true');
+      mark.textContent = '”';
+
+      const body = document.createElement('p');
+      body.className = 'customer-review__body';
+      body.textContent = review.body;
+
+      const author = document.createElement('strong');
+      author.className = 'customer-review__author';
+      author.textContent = review.name;
+
+      const project = galleryAssets.find((asset) => asset.id === review.gallery_id);
+      const context = document.createElement('span');
+      context.className = 'customer-review__project';
+      context.textContent = project ? `عن ${project.title}` : 'من عملائنا';
+
+      card.append(mark, body, author, context);
+      customerReviews.append(card);
+    });
+  };
+
+  const loadCustomerReviews = async () => {
+    if (!customerReviews) return;
+
+    try {
+      const response = await fetch('/api/comments');
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('هذه النسخة لا تشغّل خادم الموقع؛ يلزم ربطها بالـBackend لعرض الآراء واستقبالها.');
+        }
+        throw new Error('تعذر الاتصال بخدمة الآراء. افتح الموقع من عنوان الاستضافة المرتبط بالخادم.');
+      }
+
+      const reviews = await response.json();
+      renderCustomerReviews(reviews);
+    } catch (error) {
+      customerReviews.replaceChildren();
+      const unavailable = document.createElement('p');
+      unavailable.className = 'customer-reviews__empty';
+      unavailable.textContent = error.message || 'تعذر تحميل آراء العملاء الآن.';
+      customerReviews.append(unavailable);
+
+      if (customerReviewForm) {
+        customerReviewForm.querySelectorAll('input, select, textarea, button').forEach((field) => {
+          field.disabled = true;
+        });
+        customerReviewNote.textContent = 'إرسال الرأي غير متاح حتى يتم ربط الموقع بالخادم.';
+      }
+    }
+  };
+
+  loadCustomerReviews();
+
   if (galleryGrid && commentsDialog) {
     // هذا المستمع الواحد يتعامل مع أزرار التعليقات لكل الصور.
     galleryGrid.addEventListener('click', (event) => {
@@ -121,36 +205,43 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  if (commentForm && commentNote) {
-    commentForm.addEventListener('submit', async (event) => {
+  const bindCommentForm = (targetForm, note, getGalleryId) => {
+    if (!targetForm || !note) return;
+
+    targetForm.addEventListener('submit', async (event) => {
       event.preventDefault();
-      const submit = commentForm.querySelector('button[type="submit"]');
-      const formData = new FormData(commentForm);
+      const submit = targetForm.querySelector('button[type="submit"]');
+      const formData = new FormData(targetForm);
       submit.disabled = true;
-      commentNote.textContent = '';
+      note.textContent = '';
       try {
         const response = await fetch('/api/comments', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            galleryId: commentForm.dataset.galleryId,
+            galleryId: getGalleryId(),
             name: formData.get('name'),
             body: formData.get('body')
           })
         });
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || 'تعذر إرسال التعليق.');
-        commentNote.textContent = result.message;
-        commentForm.reset();
+        note.textContent = result.message;
+        targetForm.reset();
       } catch (error) {
-        commentNote.textContent = error instanceof TypeError
+        note.textContent = error instanceof TypeError
           ? 'تعذر الاتصال بالخادم. حاول لاحقًا.'
           : error.message;
       } finally {
         submit.disabled = false;
       }
     });
-  }
+  };
+
+  bindCommentForm(commentForm, commentNote, () => commentForm.dataset.galleryId);
+  bindCommentForm(customerReviewForm, customerReviewNote, () => (
+    customerReviewForm.elements.namedItem('galleryId').value
+  ));
 
   const setHeaderState = () => {
     const y = window.scrollY || window.pageYOffset;

@@ -43,6 +43,9 @@ class TestPool {
     if (query.startsWith('SELECT id, name, body, created_at FROM comments')) {
       return { rows: [approvedComment], rowCount: 1 };
     }
+    if (query.startsWith('SELECT id, gallery_id, name, body, created_at FROM comments')) {
+      return { rows: [approvedComment], rowCount: 1 };
+    }
     if (query.includes('AS orders_total')) {
       return {
         rows: [{ orders_total: 1, orders_new: 1, comments_pending: 0, comments_approved: 1 }],
@@ -161,6 +164,10 @@ test('validates and stores public orders and comments', async () => {
   const publicComments = await request('/api/comments/walnut-desk');
   assert.equal(publicComments.status, 200);
   assert.equal((await publicComments.json())[0].status, 'approved');
+
+  const customerReviews = await request('/api/comments');
+  assert.equal(customerReviews.status, 200);
+  assert.equal((await customerReviews.json())[0].gallery_id, 'walnut-desk');
 });
 
 test('protects admin data and supports dashboard sign-in and updates', async () => {

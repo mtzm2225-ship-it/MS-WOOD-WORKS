@@ -161,6 +161,21 @@ app.post('/api/orders', submissionLimiter, async (req, res, next) => {
   }
 });
 
+app.get('/api/comments', async (req, res, next) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, gallery_id, name, body, created_at
+       FROM comments
+       WHERE status = 'approved'
+       ORDER BY created_at DESC
+       LIMIT 12`
+    );
+    res.json(result.rows);
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.get('/api/comments/:galleryId', async (req, res, next) => {
   try {
     const { galleryId } = req.params;
