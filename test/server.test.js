@@ -308,7 +308,6 @@ test('serves the website, admin dashboard, and assets', async () => {
   assert.ok(vercelConfig.rewrites.some((rewrite) => (
     rewrite.source === '/admin' && rewrite.destination === '/admin.html'
   )));
-  assert.equal(require('../api/[...path]'), app);
 
   const home = await request('/');
   assert.equal(home.status, 200);

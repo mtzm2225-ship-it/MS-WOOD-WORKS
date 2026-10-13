@@ -70,9 +70,9 @@ npm test
 
 ## النشر على Vercel
 
-تُقدّم ملفات `public/` الثابتة عبر Vercel؛ يعيد المسار `/admin` كتابة صفحة `admin.html` صراحةً، وتحوّل دالة `api/[...path].js` جميع طلبات `/api/*` إلى Express. اترك Framework وBuild Command وOutput Directory في إعدادات المشروع على الاكتشاف/القيم الافتراضية، وتأكد من عدم وجود إعداد نشر قديم يحصر البناء في `index.html` فقط. قبل أول طلب للـAPI:
+تُقدّم ملفات `public/` الثابتة عبر Vercel، ويشغّل Vercel تطبيق Express المصدّر من `server.js` لمعالجة الموقع وطلبات `/api/*` معًا. يعيد المسار `/admin` كتابة صفحة `admin.html`. اترك Framework على Express وBuild Command وOutput Directory على القيم الافتراضية، وتأكد من عدم وجود إعداد نشر قديم يحصر البناء في `index.html` فقط. قبل أول طلب للـAPI:
 
-1. اربط مستودع GitHub بمشروع Vercel واجعل مجلد المشروع هو Root Directory. استخدم إعداد **Other** أو الإعداد المكتشف تلقائيًا، ولا تضبط Output Directory على `public` لأنه قد يستبعد دالة API؛ اترك Build Command وOutput Directory على القيم الافتراضية.
+1. اربط مستودع GitHub بمشروع Vercel واجعل مجلد المشروع هو Root Directory. استخدم إعداد إطار **Express** أو الاكتشاف التلقائي، ولا تضبط Output Directory على `public`؛ اترك Build Command وOutput Directory على القيم الافتراضية.
 2. جهّز قاعدة PostgreSQL مُدارة ومتاحة من Vercel، ثم أضف هذه المتغيرات في Vercel: افتح **Project → Settings → Environment Variables** وأضف القيم لكل من Production وPreview عند الحاجة:
    - `DATABASE_URL`: رابط اتصال PostgreSQL؛ استخدم رابطًا مجمّعًا (pooled) إذا كان مزود قاعدة البيانات يوفّره.
    - `ADMIN_EMAIL`: بريد دخول الإدارة.

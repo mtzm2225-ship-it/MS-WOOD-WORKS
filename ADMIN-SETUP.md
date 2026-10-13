@@ -28,7 +28,7 @@ Create a PostgreSQL database named `mswood`, set `DATABASE_URL`, `ADMIN_EMAIL`, 
 
 ### Vercel
 
-The site's HTML, CSS, JavaScript, and images live in `public/` and are served as static assets. The `/admin` rewrite serves `public/admin.html`; `api/[...path].js` sends `/api/*` requests to the Express app. Connect the GitHub repository to Vercel and set the project Root Directory to this project. Use the Other framework preset or automatic detection, and leave Build Command and Output Directory at their defaults; remove old static-only build or output-directory overrides.
+The site's static assets live in `public/`, and Vercel detects `server.js` as the Express app and routes application and API requests through it. The `/admin` rewrite serves `public/admin.html`. Connect the GitHub repository to Vercel, set the project Root Directory to this project, and keep the Express framework detection with Build Command and Output Directory at their defaults; remove old static-only build or output-directory overrides.
 
 Add these environment variables in **Vercel Project → Settings → Environment Variables** for every environment you deploy:
 
