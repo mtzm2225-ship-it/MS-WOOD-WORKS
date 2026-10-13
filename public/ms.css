@@ -1648,3 +1648,9 @@ button, input, textarea {
 
   .ft { }
 }
+
+@media (max-height: 420px) {
+  .social-dock {
+    display: none;
+  }
+}
