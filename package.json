@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
+    "seed:demo": "node scripts/seed-demo-data.js --confirm-demo-data",
     "test": "node --test"
   },
   "engines": {
