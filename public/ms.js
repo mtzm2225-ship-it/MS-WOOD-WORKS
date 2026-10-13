@@ -11,7 +11,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('contactForm');
   const formNote = document.getElementById('formNote');
   const galleryGrid = document.getElementById('galleryGrid');
-  const socialPosts = document.getElementById('socialPosts');
   const commentsDialog = document.getElementById('galleryComments');
   const commentForm = document.getElementById('galleryCommentForm');
   const commentList = document.getElementById('galleryCommentList');
@@ -23,19 +22,16 @@ document.addEventListener('DOMContentLoaded', () => {
     { id: 'custom-boards', src: 'img/WhatsApp Image 2026-10-12 at 11.46.46 AM (2).jpeg', alt: 'قطع خشبية مخصصة', category: 'تصميم', title: 'ألواح مخصصة' },
     { id: 'fine-interior', src: 'img/WhatsApp Image 2026-10-12 at 11.46.46 AM (3).jpeg', alt: 'أثاث خشبي فاخر', category: 'ديكور', title: 'لمسات فاخرة' },
     { id: 'hand-finish', src: 'img/WhatsApp Image 2026-10-12 at 11.46.46 AM (4).jpeg', alt: 'تفاصيل تشطيب الخشب', category: 'تشطيب', title: 'تلميع يدوي' },
-    { id: 'craft-detail', src: 'img/WhatsApp Image 2026-10-12 at 11.46.47 AM.jpeg', alt: 'حرفة النجارة', category: 'الحِرفة', title: 'دقة التنفيذ' },
     { id: 'wood-detail', src: 'img/WhatsApp Image 2026-10-12 at 11.46.47 AM (1).jpeg', alt: 'قطع خشبية جاهزة للتشطيب', category: 'الحرفية', title: 'الخشب يميل للتفاصيل' },
-    { id: 'modern-space', src: 'img/WhatsApp Image 2026-10-12 at 11.46.47 AM (2).jpeg', alt: 'أثاث خشبي داخل مسرح منزلي', category: 'تجهيز', title: 'مساحات معاصرة' },
-    { id: 'brand-story', src: 'img/MS Woodworks_ Crafted in Warmth.png', alt: 'هوية MS Woodworks', category: 'الهوية', title: 'صنعنا فتميزنا' },
-    { id: 'executive-walnut', src: 'img/Gemini_Generated_Image_98tp7s98tp7s98tp.jpeg', alt: 'أثاث تنفيذي من الجوز الداكن', category: 'تنفيذي', title: 'مكتب جوز فاخر' },
-    { id: 'brand-mark', src: 'img/Gemini_Generated_Image_rm6yb4rm6yb4rm6y.jpeg', alt: 'شعار MS Woodworks', category: 'العلامة', title: 'هوية الحِرفة' }
+    { id: 'modern-space', src: 'img/WhatsApp Image 2026-10-12 at 11.46.47 AM (2).jpeg', alt: 'أثاث خشبي داخل مسرح منزلي', category: 'تجهيز', title: 'مساحات معاصرة' }
   ];
+  const reservedPhotoSlots = 2;
 
   // نستخدم مستمعًا واحدًا للمعرض لأن بطاقاته تُنشأ ديناميكيًا.
   const renderGallery = () => {
     if (!galleryGrid) return;
 
-    galleryGrid.innerHTML = galleryAssets.map((item, index) => {
+    const photoTiles = galleryAssets.map((item, index) => {
       const wide = index % 4 === 0 || index % 5 === 0 ? 'tile--wide' : '';
       return `
         <figure class="tile ${wide} reveal" data-delay="${(index % 5) + 1}">
@@ -48,7 +44,12 @@ document.addEventListener('DOMContentLoaded', () => {
           </figcaption>
         </figure>
       `;
-    }).join('');
+    });
+    const emptyTiles = Array.from(
+      { length: Math.max(0, reservedPhotoSlots) },
+      () => '<figure class="tile tile--empty" aria-hidden="true"></figure>'
+    );
+    galleryGrid.innerHTML = [...photoTiles, ...emptyTiles].join('');
 
     const revealItems = galleryGrid.querySelectorAll('.reveal');
     revealItems.forEach((el) => {
@@ -151,33 +152,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  const renderSocialPosts = () => {
-    if (!socialPosts) return;
-
-    socialPosts.innerHTML = galleryAssets.slice(0, 3).map((item, index) => {
-      const textMap = [
-        'لمسات أخيرة على مكتب جوز مخصص لعميل في القاهرة. ♥ 128',
-        'صباح آخر داخل الورشة… حبة خشب جديدة تنتظر قرارها. ♥ 94',
-        'التوقيع على كل قطعة: MS — حين يتحدث الاسم عن الصنعة. ♥ 152'
-      ];
-
-      return `
-        <li class="fb__post">
-          <div class="fb__post-img"><img src="${item.src}" alt="${item.alt}" loading="lazy" /></div>
-          <p>${textMap[index] || 'منشور جديد من الورشة. ♥ 120'}</p>
-        </li>
-      `;
-    }).join('');
-  };
-
-  const syncFeatureImages = () => {
-    const workshopImage = document.querySelector('.workshop__media img');
-    const coverImage = document.querySelector('.fb__cover img');
-
-    if (workshopImage && galleryAssets[1]) workshopImage.src = galleryAssets[1].src;
-    if (coverImage && galleryAssets[9]) coverImage.src = galleryAssets[9].src;
-  };
-
   const setHeaderState = () => {
     const y = window.scrollY || window.pageYOffset;
     if (header) {
@@ -232,8 +206,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   renderGallery();
-  renderSocialPosts();
-  syncFeatureImages();
 
   const animateCounter = (element) => {
     const target = Number(element.dataset.count || 0);

@@ -17,18 +17,20 @@ document.addEventListener('DOMContentLoaded', () => {
     approved: 'منشور',
     rejected: 'مرفوض'
   };
+  const galleryImageBase = new URL('../img/', document.baseURI);
+  const galleryImage = (fileName) => new URL(fileName, galleryImageBase).href;
   const galleryAssets = {
-    'walnut-desk': { title: 'مكتب الجوز التنفيذي', src: '/img/WhatsApp Image 2026-10-12 at 11.46.46 AM.jpeg' },
-    'workshop-details': { title: 'تفاصيل الصنعة', src: '/img/WhatsApp Image 2026-10-12 at 11.46.46 AM (1).jpeg' },
-    'custom-boards': { title: 'ألواح مخصصة', src: '/img/WhatsApp Image 2026-10-12 at 11.46.46 AM (2).jpeg' },
-    'fine-interior': { title: 'لمسات فاخرة', src: '/img/WhatsApp Image 2026-10-12 at 11.46.46 AM (3).jpeg' },
-    'hand-finish': { title: 'تلميع يدوي', src: '/img/WhatsApp Image 2026-10-12 at 11.46.46 AM (4).jpeg' },
-    'craft-detail': { title: 'دقة التنفيذ', src: '/img/WhatsApp Image 2026-10-12 at 11.46.47 AM.jpeg' },
-    'wood-detail': { title: 'الخشب يميل للتفاصيل', src: '/img/WhatsApp Image 2026-10-12 at 11.46.47 AM (1).jpeg' },
-    'modern-space': { title: 'مساحات معاصرة', src: '/img/WhatsApp Image 2026-10-12 at 11.46.47 AM (2).jpeg' },
-    'brand-story': { title: 'صنعنا فتميزنا', src: '/img/MS Woodworks_ Crafted in Warmth.png' },
-    'executive-walnut': { title: 'مكتب جوز فاخر', src: '/img/Gemini_Generated_Image_98tp7s98tp7s98tp.jpeg' },
-    'brand-mark': { title: 'هوية الحِرفة', src: '/img/Gemini_Generated_Image_rm6yb4rm6yb4rm6y.jpeg' }
+    'walnut-desk': { title: 'مكتب الجوز التنفيذي', src: galleryImage('WhatsApp Image 2026-10-12 at 11.46.46 AM.jpeg') },
+    'workshop-details': { title: 'تفاصيل الصنعة', src: galleryImage('WhatsApp Image 2026-10-12 at 11.46.46 AM (1).jpeg') },
+    'custom-boards': { title: 'ألواح مخصصة', src: galleryImage('WhatsApp Image 2026-10-12 at 11.46.46 AM (2).jpeg') },
+    'fine-interior': { title: 'لمسات فاخرة', src: galleryImage('WhatsApp Image 2026-10-12 at 11.46.46 AM (3).jpeg') },
+    'hand-finish': { title: 'تلميع يدوي', src: galleryImage('WhatsApp Image 2026-10-12 at 11.46.46 AM (4).jpeg') },
+    'craft-detail': { title: 'دقة التنفيذ', src: galleryImage('WhatsApp Image 2026-10-12 at 11.46.47 AM.jpeg') },
+    'wood-detail': { title: 'الخشب يميل للتفاصيل', src: galleryImage('WhatsApp Image 2026-10-12 at 11.46.47 AM (1).jpeg') },
+    'modern-space': { title: 'مساحات معاصرة', src: galleryImage('WhatsApp Image 2026-10-12 at 11.46.47 AM (2).jpeg') },
+    'brand-story': { title: 'صنعنا فتميزنا', src: galleryImage('MS Woodworks_ Crafted in Warmth.png') },
+    'executive-walnut': { title: 'مكتب جوز فاخر', src: galleryImage('Gemini_Generated_Image_98tp7s98tp7s98tp.jpeg') },
+    'brand-mark': { title: 'هوية الحِرفة', src: galleryImage('Gemini_Generated_Image_rm6yb4rm6yb4rm6y.jpeg') }
   };
 
   async function api(url, options = {}) {
