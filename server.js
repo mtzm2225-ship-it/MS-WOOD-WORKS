@@ -327,6 +327,7 @@ app.get('/ms.css', (req, res) => res.sendFile(path.join(publicDir, 'ms.css')));
 app.get('/ms.js', (req, res) => res.sendFile(path.join(publicDir, 'ms.js')));
 app.get('/admin.css', (req, res) => res.sendFile(path.join(publicDir, 'admin.css')));
 app.get('/admin.js', (req, res) => res.sendFile(path.join(publicDir, 'admin.js')));
+app.get('/gallery-assets.js', (req, res) => res.sendFile(path.join(publicDir, 'gallery-assets.js')));
 app.use('/img', express.static(path.join(publicDir, 'img'), { maxAge: isProduction ? '1d' : 0 }));
 
 app.use((error, req, res, next) => {

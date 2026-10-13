@@ -133,7 +133,7 @@ test('serves the website, admin dashboard, and assets', async () => {
     assert.match(await admin.text(), /إدارة MS Woodworks/);
   }
 
-  for (const asset of ['/ms.css', '/ms.js', '/admin.css', '/admin.js']) {
+  for (const asset of ['/ms.css', '/ms.js', '/admin.css', '/admin.js', '/gallery-assets.js']) {
     const response = await request(asset);
     assert.equal(response.status, 200, `${asset} should be served`);
   }
