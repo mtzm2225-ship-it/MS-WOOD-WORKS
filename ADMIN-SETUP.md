@@ -18,7 +18,7 @@ docker compose up --build -d
 docker compose logs -f app
 ```
 
-The server creates the `orders`, `comments`, and session tables when it starts. Open `http://localhost:3000` for the site and `http://localhost:3000/admin` for administration. PostgreSQL data remains in the `mswood-data` volume when containers restart. To stop the app without deleting data, run `docker compose down`; do not remove the volume if you need to keep orders.
+The server creates the `orders`, `comments`, worker-management, attendance, advances, and session tables when it starts. Open `http://localhost:3000` for the site and `http://localhost:3000/admin` for administration. PostgreSQL data remains in the `mswood-data` volume when containers restart. To stop the app without deleting data, run `docker compose down`; do not remove the volume if you need to keep orders and worker records.
 
 ## Local setup without Docker
 
@@ -52,6 +52,9 @@ Open `/admin` on the deployed site, or `http://localhost:3000/admin` locally, th
 
 - In **Orders**, search by name or phone and change each order's status after following up with the customer.
 - In **Photo comments**, review pending comments and approve or reject them. Only approved comments are public.
+- In **Workers**, create work categories and workers with fixed monthly salaries. Worker records can be edited or archived; archiving preserves their attendance and advance history.
+- Record daily attendance and check-in/check-out times. Existing daily records can be updated later to add a check-out time.
+- Record advances with their issue date. The monthly payroll deducts advances in the same month from fixed salary; attendance is tracked but does not automatically reduce pay.
 - Use **Log out** when finished. Admin sessions expire after eight hours.
 
 The admin APIs require the PostgreSQL and secret environment variables above; a successful static-site build alone does not configure them.

@@ -41,7 +41,7 @@
         <div>
           <p class="eyebrow">مساحة العمل</p>
           <h1>لوحة الإدارة</h1>
-          <p class="muted">متابعة استفسارات العملاء ومراجعة التعليقات المنشورة على صور المعرض.</p>
+          <p class="muted">إدارة طلبات العملاء وتعليقات المعرض والعاملين.</p>
         </div>
         <button class="button button--quiet" id="logoutButton" type="button">تسجيل الخروج</button>
       </div>
@@ -56,6 +56,7 @@
       <nav class="dashboard-tabs" aria-label="أقسام الإدارة">
         <button class="tab-button is-active" type="button" data-view="ordersView" aria-selected="true">الطلبات</button>
         <button class="tab-button" type="button" data-view="commentsView" aria-selected="false">تعليقات الصور</button>
+        <button class="tab-button" type="button" data-view="hrView" aria-selected="false">العاملون</button>
       </nav>
 
       <section class="dashboard-view" id="ordersView" aria-labelledby="ordersTitle">
@@ -92,6 +93,137 @@
         </div>
         <p class="inline-message" id="commentsMessage" role="status"></p>
         <div class="records-list" id="commentsList" aria-live="polite"></div>
+      </section>
+
+      <section class="dashboard-view" id="hrView" aria-labelledby="hrTitle" hidden>
+        <div class="page-heading hr-heading">
+          <div>
+            <p class="eyebrow">إدارة شؤون العاملين</p>
+            <h2 id="hrTitle">العاملون والرواتب</h2>
+            <p class="muted">سجّل الفئات والعاملين، وتابع الحضور والسُلف وصافي الراتب الشهري بعد خصم السُلف.</p>
+          </div>
+          <label class="month-picker" for="payrollMonth">الشهر
+            <input id="payrollMonth" type="month" required />
+          </label>
+        </div>
+        <section class="summary-grid hr-summary" aria-label="ملخص شؤون العاملين">
+          <article class="summary-item"><span>الفئات</span><strong id="hrCategoryCount">0</strong></article>
+          <article class="summary-item"><span>العاملون النشطون</span><strong id="hrWorkerCount">0</strong></article>
+          <article class="summary-item"><span>إجمالي السُلف هذا الشهر</span><strong id="hrAdvancesTotal">0 ج.م</strong></article>
+          <article class="summary-item"><span>صافي الرواتب بعد السُلف</span><strong id="hrNetTotal">0 ج.م</strong></article>
+        </section>
+
+        <nav class="dashboard-tabs hr-tabs" aria-label="أقسام شؤون العاملين">
+          <button class="tab-button is-active" type="button" data-hr-view="workersView" aria-selected="true">العمال والفئات</button>
+          <button class="tab-button" type="button" data-hr-view="attendanceView" aria-selected="false">الحضور والانصراف</button>
+          <button class="tab-button" type="button" data-hr-view="advancesView" aria-selected="false">السُلف</button>
+          <button class="tab-button" type="button" data-hr-view="payrollView" aria-selected="false">كشف الرواتب</button>
+        </nav>
+
+        <section class="hr-subview" id="workersView">
+          <div class="hr-management-grid">
+            <section class="hr-panel" aria-labelledby="categoriesTitle">
+              <h3 id="categoriesTitle">فئات العمل</h3>
+              <p class="muted">أنشئ فئات مثل نجار أو دهّان، أو غيّر اسم فئة موجودة.</p>
+              <form id="categoryForm" class="hr-form hr-category-form">
+                <label for="categoryName">اسم الفئة</label>
+                <input id="categoryName" name="name" maxlength="80" required />
+                <button class="button button--primary" type="submit">إضافة فئة</button>
+              </form>
+              <p class="inline-message" id="categoriesMessage" role="status"></p>
+              <div class="records-list" id="categoriesList" aria-live="polite"></div>
+            </section>
+
+            <section class="hr-panel" aria-labelledby="workerFormTitle">
+              <h3 id="workerFormTitle">إضافة عامل</h3>
+              <p class="muted">سجّل بيانات العامل وراتبه الشهري الثابت.</p>
+              <form id="workerForm" class="hr-form">
+                <input id="workerId" name="workerId" type="hidden" />
+                <label for="workerName">اسم العامل</label>
+                <input id="workerName" name="name" maxlength="100" autocomplete="name" required />
+                <label for="workerPhone">رقم الهاتف</label>
+                <input id="workerPhone" name="phone" type="tel" maxlength="40" dir="ltr" required />
+                <label for="workerCategory">فئة العمل</label>
+                <select id="workerCategory" name="categoryId" required></select>
+                <label for="workerSalary">الراتب الشهري (جنيه)</label>
+                <input id="workerSalary" name="monthlySalary" type="number" min="0" max="100000000" step="0.01" required />
+                <div class="hr-form-actions">
+                  <button class="button button--primary" type="submit" id="workerSubmit">إضافة العامل</button>
+                  <button class="button button--quiet" type="button" id="workerCancel" hidden>إلغاء التعديل</button>
+                </div>
+              </form>
+              <p class="inline-message" id="workersMessage" role="status"></p>
+            </section>
+          </div>
+          <section class="hr-panel hr-list-panel" aria-labelledby="workersListTitle">
+            <div class="view-heading">
+              <div><h3 id="workersListTitle">سجل العاملين</h3><p class="muted">يمكنك تعديل بيانات العامل أو إيقافه مع الاحتفاظ بسجلاته السابقة.</p></div>
+              <label class="visually-hidden" for="workerStatusFilter">فلترة العاملين</label>
+              <select id="workerStatusFilter">
+                <option value="active">العاملون النشطون</option>
+                <option value="all">كل العاملين</option>
+              </select>
+            </div>
+            <div class="records-list" id="workersList" aria-live="polite"></div>
+          </section>
+        </section>
+
+        <section class="hr-subview" id="attendanceView" hidden>
+          <section class="hr-panel">
+            <div class="view-heading">
+              <div><h3>تسجيل حضور أو انصراف</h3><p class="muted">يمكن تحديث سجل العامل نفسه في اليوم ذاته.</p></div>
+              <label class="month-picker" for="attendanceDate">التاريخ<input id="attendanceDate" type="date" required /></label>
+            </div>
+            <form id="attendanceForm" class="hr-form hr-inline-form">
+              <div class="hr-field"><label for="attendanceWorker">العامل</label><select id="attendanceWorker" name="workerId" required></select></div>
+              <div class="hr-field"><label for="attendanceStatus">الحالة</label>
+                <select id="attendanceStatus" name="status"><option value="present">حاضر</option><option value="absent">غائب</option></select>
+              </div>
+              <div class="hr-field"><label for="checkIn">وقت الحضور</label><input id="checkIn" name="checkIn" type="time" /></div>
+              <div class="hr-field"><label for="checkOut">وقت الانصراف</label><input id="checkOut" name="checkOut" type="time" /></div>
+              <div class="hr-field"><label for="attendanceNote">ملاحظة</label><input id="attendanceNote" name="note" maxlength="500" /></div>
+              <button class="button button--primary" type="submit">حفظ الحضور</button>
+            </form>
+            <p class="inline-message" id="attendanceMessage" role="status"></p>
+          </section>
+          <section class="hr-panel hr-list-panel">
+            <h3>سجل اليوم</h3>
+            <div class="records-list" id="attendanceList" aria-live="polite"></div>
+          </section>
+        </section>
+
+        <section class="hr-subview" id="advancesView" hidden>
+          <section class="hr-panel">
+            <h3>تسجيل سُلفة</h3>
+            <p class="muted">تُسجل السلفة على العامل وتُخصم من كشف راتب الشهر الذي صُرفت فيه.</p>
+            <form id="advanceForm" class="hr-form hr-inline-form">
+              <div class="hr-field"><label for="advanceWorker">العامل</label><select id="advanceWorker" name="workerId" required></select></div>
+              <div class="hr-field"><label for="advanceDate">التاريخ</label><input id="advanceDate" name="date" type="date" required /></div>
+              <div class="hr-field"><label for="advanceAmount">المبلغ (جنيه)</label><input id="advanceAmount" name="amount" type="number" min="0.01" max="100000000" step="0.01" required /></div>
+              <div class="hr-field"><label for="advanceNote">السبب أو ملاحظة</label><input id="advanceNote" name="note" maxlength="500" /></div>
+              <button class="button button--primary" type="submit">حفظ السلفة</button>
+            </form>
+            <p class="inline-message" id="advancesMessage" role="status"></p>
+          </section>
+          <section class="hr-panel hr-list-panel">
+            <h3>سُلف الشهر</h3>
+            <div class="records-list" id="advancesList" aria-live="polite"></div>
+          </section>
+        </section>
+
+        <section class="hr-subview" id="payrollView" hidden>
+          <section class="hr-panel">
+            <h3>كشف الرواتب الشهري</h3>
+            <p class="muted">صافي المستحق = الراتب الشهري الثابت − سُلف الشهر. الحضور مسجل للمتابعة ولا يخصم تلقائيًا.</p>
+            <p class="inline-message" id="payrollMessage" role="status"></p>
+            <div class="payroll-table-wrap">
+              <table class="payroll-table">
+                <thead><tr><th>العامل</th><th>الفئة</th><th>الراتب الشهري</th><th>سُلف الشهر</th><th>صافي المستحق</th></tr></thead>
+                <tbody id="payrollList"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
       </section>
     </section>
   </main>
