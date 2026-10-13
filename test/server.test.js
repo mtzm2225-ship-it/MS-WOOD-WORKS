@@ -35,6 +35,8 @@ const advances = [];
 const custodies = [];
 const custodyMovements = [];
 const expenses = [];
+const projects = [];
+const workReceipts = [];
 
 function categoryById(id) {
   return workCategories.find((category) => String(category.id) === String(id));
@@ -68,6 +70,126 @@ class TestPool {
       };
       custodyMovements.push(movement);
       return { rows: [movement], rowCount: 1 };
+    }
+    if (query.startsWith('SELECT COUNT(*)::int AS receipt_count')) {
+      const matching = workReceipts.filter((receipt) => receipt.receipt_date >= values[0] && receipt.receipt_date <= values[1]);
+      const totalFor = (type) => matching.filter((receipt) => receipt.receipt_type === type)
+        .reduce((sum, receipt) => sum + Number(receipt.amount), 0);
+      return {
+        rows: [{
+          receipt_count: matching.length,
+          total: matching.reduce((sum, receipt) => sum + Number(receipt.amount), 0).toFixed(2),
+          project_total: totalFor('project').toFixed(2),
+          order_total: totalFor('order').toFixed(2),
+          general_total: totalFor('general').toFixed(2)
+        }],
+        rowCount: 1
+      };
+    }
+    if (query.startsWith('SELECT p.id, p.order_id')) {
+      const rows = projects.filter((project) => project.active).map((project) => {
+        const linkedOrder = storedOrders.find((orderRecord) => orderRecord.id === project.order_id);
+        const projectReceipts = workReceipts.filter((receipt) => (
+          receipt.project_id === project.id || receipt.order_id === project.order_id
+        ));
+        const paidTotal = projectReceipts.reduce((sum, receipt) => sum + Number(receipt.amount), 0);
+        return {
+          id: project.id,
+          order_id: project.order_id,
+          name: project.name,
+          customer_name: linkedOrder?.name,
+          phone: linkedOrder?.phone,
+          agreed_amount: project.agreed_amount,
+          paid_total: paidTotal.toFixed(2),
+          remaining_amount: (Number(project.agreed_amount) - paidTotal).toFixed(2),
+          created_at: project.created_at
+        };
+      });
+      return { rows, rowCount: rows.length };
+    }
+    if (query.startsWith('SELECT o.id, COUNT(*) OVER()::int AS result_total')) {
+      const rows = storedOrders.filter((orderRecord) => (
+        !projects.some((project) => project.active && project.order_id === orderRecord.id)
+      )).map((orderRecord) => ({
+        id: orderRecord.id,
+        name: orderRecord.name,
+        phone: orderRecord.phone,
+        created_at: orderRecord.created_at
+      }));
+      return {
+        rows: rows.map((record) => ({ ...record, result_total: rows.length })),
+        rowCount: rows.length
+      };
+    }
+    if (query.startsWith('SELECT r.id, COUNT(*) OVER()::int AS result_total')) {
+      const rows = workReceipts
+        .filter((receipt) => receipt.receipt_date >= values[0] && receipt.receipt_date <= values[1])
+        .reverse()
+        .map((receipt) => {
+          const project = projects.find((item) => item.id === receipt.project_id);
+          const linkedOrder = receipt.order_id
+            ? storedOrders.find((item) => item.id === receipt.order_id)
+            : storedOrders.find((item) => item.id === project?.order_id);
+          return {
+            ...receipt,
+            result_total: workReceipts.filter((item) => item.receipt_date >= values[0] && item.receipt_date <= values[1]).length,
+            project_name: project?.name || null,
+            customer_name: linkedOrder?.name || null
+          };
+        });
+      return { rows, rowCount: rows.length };
+    }
+    if (query.startsWith('INSERT INTO work_projects')) {
+      if (projects.some((project) => project.order_id === Number(values[0]))) {
+        throw Object.assign(new Error('duplicate project order'), { code: '23505' });
+      }
+      const project = {
+        id: projects.length + 1,
+        order_id: Number(values[0]),
+        name: values[1],
+        agreed_amount: Number(values[2]).toFixed(2),
+        active: true,
+        created_at: '2026-10-13T00:00:00.000Z'
+      };
+      if (!storedOrders.some((orderRecord) => orderRecord.id === project.order_id)) {
+        return { rows: [], rowCount: 0 };
+      }
+      projects.push(project);
+      return { rows: [project], rowCount: 1 };
+    }
+    if (query.startsWith('UPDATE work_projects')) {
+      const project = projects.find((item) => String(item.id) === String(values[2]) && item.active);
+      if (project) {
+        project.name = values[0];
+        project.agreed_amount = Number(values[1]).toFixed(2);
+      }
+      return { rows: project ? [project] : [], rowCount: Number(Boolean(project)) };
+    }
+    if (query.startsWith('INSERT INTO work_receipts')) {
+      const type = values[1];
+      const projectId = type === 'project' ? Number(values[2]) : null;
+      const orderId = type === 'order' ? Number(values[3]) : null;
+      if (type === 'project' && !projects.some((project) => project.id === projectId && project.active)) {
+        return { rows: [], rowCount: 0 };
+      }
+      if (type === 'order' && !storedOrders.some((orderRecord) => orderRecord.id === orderId)) {
+        return { rows: [], rowCount: 0 };
+      }
+      const receipt = {
+        id: workReceipts.length + 1,
+        receipt_date: values[0],
+        receipt_type: type,
+        project_id: projectId,
+        order_id: orderId,
+        amount: Number(values[4]).toFixed(2),
+        description: values[5],
+        paid_by: values[6],
+        payment_method: values[7],
+        reference: values[8],
+        note: values[9]
+      };
+      workReceipts.push(receipt);
+      return { rows: [receipt], rowCount: 1 };
     }
     if (query.startsWith('WITH updated AS')) {
       const custody = custodies.find((item) => String(item.id) === String(values[0]) && item.active);

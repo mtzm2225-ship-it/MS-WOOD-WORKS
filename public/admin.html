@@ -59,6 +59,7 @@
         <button class="tab-button" type="button" data-view="customersView" aria-selected="false">حسابات العملاء</button>
         <button class="tab-button" type="button" data-view="hrView" aria-selected="false">العاملون</button>
         <button class="tab-button" type="button" data-view="expensesView" aria-selected="false">المصروفات والعُهد</button>
+        <button class="tab-button" type="button" data-view="collectionsView" aria-selected="false">تحصيلات الشغل</button>
       </nav>
 
       <section class="dashboard-view" id="ordersView" aria-labelledby="ordersTitle">
@@ -372,6 +373,105 @@
           <section class="hr-panel hr-list-panel" aria-labelledby="custodyMovementsTitle">
             <h3 id="custodyMovementsTitle">سجل تسليم واسترجاع العُهد للفترة</h3>
             <div class="records-list" id="custodyMovementsList" aria-live="polite"></div>
+          </section>
+        </section>
+
+        <section class="dashboard-view" id="collectionsView" aria-labelledby="collectionsTitle" hidden>
+          <div class="page-heading hr-heading">
+            <div>
+              <p class="eyebrow">إيرادات الشغل</p>
+              <h2 id="collectionsTitle">تحصيلات العملاء</h2>
+              <p class="muted">سجّل دفعات المشروع والطلبات والإيرادات العامة. التحصيل الزائد مسموح ويظهر بوضوح في رصيد المشروع.</p>
+            </div>
+            <div class="expense-date-range">
+              <label class="month-picker" for="collectionFrom">من تاريخ
+                <input id="collectionFrom" type="date" required />
+              </label>
+              <label class="month-picker" for="collectionTo">إلى تاريخ
+                <input id="collectionTo" type="date" required />
+              </label>
+              <button class="button button--quiet" id="refreshCollections" type="button">عرض الفترة</button>
+            </div>
+          </div>
+          <p class="inline-message" id="collectionsMessage" role="status"></p>
+
+          <section class="summary-grid hr-summary expense-summary" aria-label="ملخص التحصيلات">
+            <article class="summary-item"><span>إجمالي التحصيل في الفترة</span><strong id="collectionsTotal">0 ج.م</strong></article>
+            <article class="summary-item"><span>دفعات المشاريع</span><strong id="projectCollectionsTotal">0 ج.م</strong></article>
+            <article class="summary-item"><span>تحصيلات الطلبات</span><strong id="orderCollectionsTotal">0 ج.م</strong></article>
+            <article class="summary-item"><span>إيرادات عامة غير مرتبطة</span><strong id="generalCollectionsTotal">0 ج.م</strong></article>
+          </section>
+
+          <div class="hr-management-grid collection-forms">
+            <section class="hr-panel" aria-labelledby="createProjectTitle">
+              <h3 id="createProjectTitle">تسجيل شغل متفق عليه</h3>
+              <p class="muted">اربط طلب العميل بالمشروع وسجّل قيمة الاتفاق؛ أضف الدفعات على مراحل واحسب المتبقي تلقائيًا.</p>
+              <form id="projectForm" class="hr-form">
+                <label for="projectOrder">طلب العميل</label>
+                <select id="projectOrder" name="orderId" required></select>
+                <label for="projectName">وصف الشغل</label>
+                <input id="projectName" name="name" maxlength="200" required />
+                <label for="projectAgreedAmount">قيمة الاتفاق (جنيه)</label>
+                <input id="projectAgreedAmount" name="agreedAmount" type="number" min="0.01" max="100000000" step="0.01" required />
+                <button class="button button--primary" type="submit">تسجيل المشروع</button>
+              </form>
+            </section>
+
+            <section class="hr-panel" aria-labelledby="recordReceiptTitle">
+              <h3 id="recordReceiptTitle">تسجيل تحصيل</h3>
+              <p class="muted">اختر نوع التحصيل: مشروع بقيمة اتفاق، طلب دون إجمالي، أو إيراد عام مستقل.</p>
+              <form id="receiptForm" class="hr-form">
+                <label for="receiptType">نوع التحصيل</label>
+                <select id="receiptType" name="type">
+                  <option value="project">دفعة لمشروع متفق عليه</option>
+                  <option value="order">تحصيل لطلب دون قيمة إجمالية</option>
+                  <option value="general">إيراد عام غير مرتبط بطلب</option>
+                </select>
+                <div id="receiptProjectField">
+                  <label for="receiptProject">المشروع</label>
+                  <select id="receiptProject" name="projectId" required></select>
+                </div>
+                <div id="receiptOrderField" hidden>
+                  <label for="receiptOrder">طلب العميل</label>
+                  <select id="receiptOrder" name="orderId" disabled></select>
+                </div>
+                <label for="receiptDate">تاريخ التحصيل</label>
+                <input id="receiptDate" name="date" type="date" required />
+                <label for="receiptAmount">المبلغ المستلم (جنيه)</label>
+                <input id="receiptAmount" name="amount" type="number" min="0.01" max="100000000" step="0.01" required />
+                <label for="receiptDescription">بيان التحصيل أو سبب الدفعة</label>
+                <input id="receiptDescription" name="description" maxlength="500" required />
+                <label for="receiptPaidBy">اسم الدافع</label>
+                <input id="receiptPaidBy" name="paidBy" maxlength="120" />
+                <label for="receiptPaymentMethod">طريقة الاستلام</label>
+                <select id="receiptPaymentMethod" name="paymentMethod">
+                  <option value="cash">نقدًا</option>
+                  <option value="transfer">تحويل بنكي</option>
+                  <option value="card">بطاقة</option>
+                  <option value="wallet">محفظة إلكترونية</option>
+                  <option value="other">أخرى</option>
+                </select>
+                <label for="receiptReference">رقم الإيصال أو التحويل</label>
+                <input id="receiptReference" name="reference" maxlength="100" />
+                <label for="receiptNote">ملاحظات</label>
+                <input id="receiptNote" name="note" maxlength="500" />
+                <button class="button button--primary" type="submit">حفظ التحصيل</button>
+              </form>
+            </section>
+          </div>
+
+          <section class="hr-panel hr-list-panel" aria-labelledby="projectsListTitle">
+            <h3 id="projectsListTitle">المشاريع والأرصدة</h3>
+            <div class="payroll-table-wrap">
+              <table class="payroll-table">
+                <thead><tr><th>المشروع</th><th>العميل</th><th>قيمة الاتفاق</th><th>المحصل</th><th>المتبقي / الزيادة</th></tr></thead>
+                <tbody id="collectionProjectsList"></tbody>
+              </table>
+            </div>
+          </section>
+          <section class="hr-panel hr-list-panel" aria-labelledby="receiptsListTitle">
+            <h3 id="receiptsListTitle">سجل التحصيلات للفترة</h3>
+            <div class="records-list" id="receiptsList" aria-live="polite"></div>
           </section>
         </section>
       </section>

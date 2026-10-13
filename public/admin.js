@@ -629,10 +629,158 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  function updateOrderSelect(select, orders, placeholderText) {
+    const selected = select.value;
+    select.replaceChildren();
+    const placeholder = element('option', '', placeholderText);
+    placeholder.value = '';
+    placeholder.disabled = true;
+    placeholder.selected = true;
+    select.append(placeholder);
+    orders.forEach((order) => {
+      const option = element('option', '', `${order.name} · ${order.phone} · طلب ${order.id}`);
+      option.value = order.id;
+      option.selected = String(order.id) === selected;
+      select.append(option);
+    });
+  }
+
+  function renderCollections(report) {
+    const summary = report.summary || {};
+    document.getElementById('collectionsTotal').textContent = money(summary.total);
+    document.getElementById('projectCollectionsTotal').textContent = money(summary.project_total);
+    document.getElementById('orderCollectionsTotal').textContent = money(summary.order_total);
+    document.getElementById('generalCollectionsTotal').textContent = money(summary.general_total);
+
+    updateOrderSelect(document.getElementById('projectOrder'), report.availableOrders, 'اختر طلب العميل');
+    updateOrderSelect(document.getElementById('receiptOrder'), report.availableOrders, 'اختر طلب العميل');
+
+    const projectSelect = document.getElementById('receiptProject');
+    const selectedProject = projectSelect.value;
+    projectSelect.replaceChildren();
+    const projectPlaceholder = element('option', '', report.projects.length ? 'اختر المشروع' : 'سجّل مشروعًا أولًا');
+    projectPlaceholder.value = '';
+    projectPlaceholder.disabled = true;
+    projectPlaceholder.selected = true;
+    projectSelect.append(projectPlaceholder);
+    report.projects.forEach((project) => {
+      const option = element('option', '', `${project.name} · ${project.customer_name} · المتبقي ${money(project.remaining_amount)}`);
+      option.value = project.id;
+      option.selected = String(project.id) === selectedProject;
+      projectSelect.append(option);
+    });
+
+    const projectsList = document.getElementById('collectionProjectsList');
+    projectsList.replaceChildren();
+    if (!report.projects.length) {
+      const row = document.createElement('tr');
+      const cell = element('td', 'empty-state', 'لا توجد مشاريع مرتبطة بطلب بعد. سجّل شغلًا متفقًا عليه للبدء بحساب المدفوع والمتبقي.');
+      cell.colSpan = 5;
+      row.append(cell);
+      projectsList.append(row);
+    } else {
+      report.projects.forEach((project) => {
+        const row = document.createElement('tr');
+        const remaining = Number(project.remaining_amount);
+        row.append(
+          element('td', '', project.name),
+          element('td', '', `${project.customer_name} · ${project.phone}`),
+          element('td', '', money(project.agreed_amount)),
+          element('td', '', money(project.paid_total)),
+          element('td', remaining < 0 ? 'collection-overpaid' : 'payroll-net',
+            remaining < 0 ? `زيادة محصلة ${money(Math.abs(remaining))}` : money(remaining))
+        );
+        projectsList.append(row);
+      });
+    }
+
+    const receiptsList = document.getElementById('receiptsList');
+    receiptsList.replaceChildren();
+    if (!report.receipts.length) {
+      receiptsList.append(element('p', 'empty-state', 'لا توجد تحصيلات في الفترة المختارة.'));
+    } else {
+      report.receipts.forEach((receipt) => {
+        const card = element('article', 'record expense-record');
+        const details = element('div', 'worker-details');
+        const typeLabel = {
+          project: 'دفعة مشروع متفق عليه',
+          order: 'تحصيل مرتبط بطلب',
+          general: 'إيراد عام غير مرتبط'
+        }[receipt.receipt_type];
+        details.append(
+          element('h4', 'record-title', `${typeLabel} · ${money(receipt.amount)}`),
+          element('span', '', new Intl.DateTimeFormat('ar-EG', { dateStyle: 'medium' })
+            .format(formatPlainDate(receipt.receipt_date))),
+          element('span', '', receipt.description)
+        );
+        if (receipt.project_name) details.append(element('span', '', `المشروع: ${receipt.project_name}`));
+        if (receipt.customer_name) details.append(element('span', '', `العميل: ${receipt.customer_name}`));
+        if (receipt.paid_by) details.append(element('span', '', `الدافع: ${receipt.paid_by}`));
+        details.append(element('span', '', `طريقة الاستلام: ${expensePaymentLabels[receipt.payment_method] || receipt.payment_method}`));
+        if (receipt.reference) details.append(element('span', '', `رقم الإيصال/التحويل: ${receipt.reference}`));
+        if (receipt.note) details.append(element('span', '', `ملاحظة: ${receipt.note}`));
+        card.append(details);
+        receiptsList.append(card);
+      });
+      if (Number(report.receipts[0].result_total) > report.receipts.length) {
+        receiptsList.append(element('p', 'inline-message', 'يعرض السجل أحدث ١٠٠٠ تحصيل في الفترة؛ الإجماليات تشمل كل الحركات.'));
+      }
+    }
+  }
+
+  async function loadCollections() {
+    const from = document.getElementById('collectionFrom').value;
+    const to = document.getElementById('collectionTo').value;
+    if (!from || !to) return null;
+    if (from > to) throw new Error('تاريخ بداية التحصيلات يجب أن يكون قبل تاريخ النهاية أو مساويًا له.');
+    const query = new URLSearchParams({ from, to });
+    const report = await api(`/api/admin/collections?${query}`);
+    renderCollections(report);
+    return report;
+  }
+
+  async function refreshCollectionsAfterSave(message, successMessage, projectId = '') {
+    message.textContent = successMessage;
+    try {
+      const report = await loadCollections();
+      const project = report?.projects.find((item) => String(item.id) === String(projectId));
+      if (project && Number(project.remaining_amount) < 0) {
+        message.textContent = `${successMessage} تنبيه: التحصيل تجاوز قيمة الاتفاق بمقدار ${money(Math.abs(project.remaining_amount))}.`;
+      }
+    } catch (error) {
+      message.textContent = `${successMessage} تعذر تحديث تقرير التحصيلات: ${error.message}`;
+    }
+  }
+
+  async function loadCollectionsDashboard() {
+    const message = document.getElementById('collectionsMessage');
+    message.textContent = '';
+    try {
+      await loadCollections();
+    } catch (error) {
+      message.textContent = error.message;
+    }
+  }
+
   async function submitLedgerForm(form, event, action) {
     event.preventDefault();
     const submit = form.querySelector('button[type="submit"]');
     const message = document.getElementById('expensesMessage');
+    message.textContent = '';
+    submit.disabled = true;
+    try {
+      await action(message);
+    } catch (error) {
+      message.textContent = error.message;
+    } finally {
+      submit.disabled = false;
+    }
+  }
+
+  async function submitCollectionForm(form, event, action) {
+    event.preventDefault();
+    const submit = form.querySelector('button[type="submit"]');
+    const message = document.getElementById('collectionsMessage');
     message.textContent = '';
     submit.disabled = true;
     try {
@@ -745,6 +893,9 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('custodyInitialDate').value = localDate();
   document.getElementById('custodyMovementDate').value = localDate();
   document.getElementById('expenseDate').value = localDate();
+  document.getElementById('collectionTo').value = localDate();
+  document.getElementById('collectionFrom').value = `${localMonth()}-01`;
+  document.getElementById('receiptDate').value = localDate();
 
   document.getElementById('newCustodyForm').addEventListener('submit', (event) => {
     const form = event.currentTarget;
@@ -822,6 +973,75 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('refreshExpenses').addEventListener('click', loadExpensesDashboard);
+
+  document.getElementById('projectForm').addEventListener('submit', (event) => {
+    const form = event.currentTarget;
+    submitCollectionForm(form, event, async (message) => {
+      const formData = new FormData(form);
+      await api('/api/admin/projects', {
+        method: 'POST',
+        body: JSON.stringify({
+          orderId: formData.get('orderId'),
+          name: formData.get('name'),
+          agreedAmount: formData.get('agreedAmount')
+        })
+      });
+      form.reset();
+      await refreshCollectionsAfterSave(message, 'تم تسجيل المشروع وربطه بطلب العميل.');
+    });
+  });
+
+  const receiptType = document.getElementById('receiptType');
+  const receiptProject = document.getElementById('receiptProject');
+  const receiptOrder = document.getElementById('receiptOrder');
+  function updateReceiptType() {
+    const type = receiptType.value;
+    const isProject = type === 'project';
+    const isOrder = type === 'order';
+    document.getElementById('receiptProjectField').hidden = !isProject;
+    document.getElementById('receiptOrderField').hidden = !isOrder;
+    receiptProject.required = isProject;
+    receiptProject.disabled = !isProject;
+    receiptOrder.required = isOrder;
+    receiptOrder.disabled = !isOrder;
+  }
+  receiptType.addEventListener('change', updateReceiptType);
+  updateReceiptType();
+
+  document.getElementById('receiptForm').addEventListener('submit', (event) => {
+    const form = event.currentTarget;
+    submitCollectionForm(form, event, async (message) => {
+      const formData = new FormData(form);
+      const type = formData.get('type');
+      const projectId = type === 'project' ? formData.get('projectId') : '';
+      await api('/api/admin/collections', {
+        method: 'POST',
+        body: JSON.stringify({
+          type,
+          projectId,
+          orderId: type === 'order' ? formData.get('orderId') : '',
+          date: formData.get('date'),
+          amount: formData.get('amount'),
+          description: formData.get('description'),
+          paidBy: formData.get('paidBy'),
+          paymentMethod: formData.get('paymentMethod'),
+          reference: formData.get('reference'),
+          note: formData.get('note')
+        })
+      });
+      form.reset();
+      document.getElementById('receiptDate').value = localDate();
+      updateReceiptType();
+      const typeLabel = {
+        project: 'تم تسجيل دفعة المشروع وتحديث المحصل والمتبقي.',
+        order: 'تم تسجيل التحصيل المرتبط بالطلب.',
+        general: 'تم تسجيل الإيراد العام.'
+      }[type];
+      await refreshCollectionsAfterSave(message, typeLabel, projectId);
+    });
+  });
+
+  document.getElementById('refreshCollections').addEventListener('click', loadCollectionsDashboard);
 
   document.getElementById('categoryForm').addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -974,6 +1194,7 @@ document.addEventListener('DOMContentLoaded', () => {
       else if (button.dataset.view === 'customersView') await loadCustomers();
       else if (button.dataset.view === 'hrView') await loadHrDashboard();
       else if (button.dataset.view === 'expensesView') await loadExpensesDashboard();
+      else if (button.dataset.view === 'collectionsView') await loadCollectionsDashboard();
       else await loadOrders();
     });
   });

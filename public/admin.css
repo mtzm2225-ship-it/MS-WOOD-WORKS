@@ -288,6 +288,8 @@ h2 { margin-bottom: 4px; font-size: 1.4rem; }
 .expense-record .worker-details { gap: 6px; }
 .expense-record .record-title { overflow-wrap: anywhere; }
 .expense-record > strong { direction: rtl; }
+.collection-forms { align-items: start; }
+.collection-overpaid { color: var(--admin-red); font-weight: 700; }
 .payroll-table-wrap { overflow-x: auto; }
 .payroll-table { width: 100%; border-collapse: collapse; text-align: start; }
 .payroll-table th, .payroll-table td { padding: 13px 10px; border-bottom: 1px solid var(--admin-line); white-space: nowrap; }
