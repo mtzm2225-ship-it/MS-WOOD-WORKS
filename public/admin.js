@@ -5,8 +5,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const loginMessage = document.getElementById('loginMessage');
   const ordersList = document.getElementById('ordersList');
   const commentsList = document.getElementById('commentsList');
+  const customersList = document.getElementById('customersList');
   const ordersMessage = document.getElementById('ordersMessage');
   const commentsMessage = document.getElementById('commentsMessage');
+  const customersMessage = document.getElementById('customersMessage');
   const categoriesList = document.getElementById('categoriesList');
   const workersList = document.getElementById('workersList');
   const attendanceList = document.getElementById('attendanceList');
@@ -188,6 +190,40 @@ document.addEventListener('DOMContentLoaded', () => {
     const status = document.getElementById('commentStatusFilter').value;
     const params = status === 'all' ? '' : `?status=${encodeURIComponent(status)}`;
     renderComments(await api(`/api/admin/comments${params}`));
+  }
+
+  function renderCustomers(customers) {
+    customersList.replaceChildren();
+    if (!customers.length) {
+      customersList.append(element('p', 'empty-state', 'لا توجد حسابات عملاء مسجلة حتى الآن.'));
+      return;
+    }
+
+    customers.forEach((customer) => {
+      const card = element('article', 'record');
+      const top = element('div', 'record-top');
+      top.append(
+        element('h3', 'record-title', customer.name),
+        element('time', 'record-date', `تاريخ التسجيل: ${formatDate(customer.created_at)}`)
+      );
+      const contact = element('div', 'record-contact');
+      const email = element('a', '', customer.email);
+      email.href = `mailto:${customer.email}`;
+      const phone = element('a', '', customer.phone);
+      phone.href = `tel:${customer.phone.replace(/[^+\d]/g, '')}`;
+      contact.append(email, phone);
+      card.append(top, contact);
+      customersList.append(card);
+    });
+  }
+
+  async function loadCustomers() {
+    customersMessage.textContent = '';
+    try {
+      renderCustomers(await api('/api/admin/customers'));
+    } catch (error) {
+      customersMessage.textContent = error.message;
+    }
   }
 
   async function updateComment(id, status) {
@@ -680,6 +716,7 @@ document.addEventListener('DOMContentLoaded', () => {
         view.hidden = view.id !== button.dataset.view;
       });
       if (button.dataset.view === 'commentsView') await loadComments();
+      else if (button.dataset.view === 'customersView') await loadCustomers();
       else if (button.dataset.view === 'hrView') await loadHrDashboard();
       else await loadOrders();
     });
@@ -688,6 +725,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('orderSearch').addEventListener('input', () => renderOrders(currentOrders));
   document.getElementById('orderStatusFilter').addEventListener('change', loadOrders);
   document.getElementById('commentStatusFilter').addEventListener('change', loadComments);
+  document.getElementById('refreshCustomers').addEventListener('click', loadCustomers);
 
   // نستعيد الجلسة عند تحديث الصفحة، أو نعرض نموذج تسجيل الدخول.
   api('/api/admin/session')

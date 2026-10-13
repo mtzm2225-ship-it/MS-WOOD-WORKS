@@ -182,7 +182,8 @@ class TestPool {
         name: values[0],
         email: values[1],
         phone: values[2],
-        password_hash: values[3]
+        password_hash: values[3],
+        created_at: '2026-10-12T00:00:00.000Z'
       };
       customers.push(customer);
       return {
@@ -193,6 +194,14 @@ class TestPool {
     if (query.startsWith('SELECT id, name, email, phone, password_hash FROM customers')) {
       const customer = customers.find((item) => item.email === values[0]);
       return { rows: customer ? [customer] : [], rowCount: Number(Boolean(customer)) };
+    }
+    if (query.startsWith('SELECT id, name, email, phone, created_at FROM customers')) {
+      return {
+        rows: customers.map(({ id, name, email, phone, created_at }) => ({
+          id, name, email, phone, created_at
+        })).reverse(),
+        rowCount: customers.length
+      };
     }
     if (query.startsWith('SELECT id, name, phone, message, status, created_at FROM orders WHERE customer_id')) {
       const customerOrders = storedOrders
@@ -309,7 +318,10 @@ test('serves the website, admin dashboard, and assets', async () => {
   for (const route of ['/admin', '/admin.html']) {
     const admin = await request(route);
     assert.equal(admin.status, 200);
-    assert.match(await admin.text(), /إدارة MS Woodworks/);
+    const adminPage = await admin.text();
+    assert.match(adminPage, /إدارة MS Woodworks/);
+    assert.match(adminPage, /data-view="customersView"/);
+    assert.match(adminPage, /كلمات المرور لا تُعرض/);
   }
 
   assert.match(homePage, /id="customerAccountOpen"/);
@@ -322,6 +334,9 @@ test('serves the website, admin dashboard, and assets', async () => {
   assert.match(homeScriptText, /endpoint: '\/api\/customer\/login'/);
   assert.match(homeScriptText, /endpoint: '\/api\/customer\/register'/);
   assert.match(homeScriptText, /fetch\('\/api\/customer\/orders'/);
+  const adminScript = await request('/admin.js');
+  assert.equal(adminScript.status, 200);
+  assert.match(await adminScript.text(), /api\/admin\/customers/);
 
   for (const asset of ['/ms.css', '/ms.js', '/admin.css', '/admin.js', '/gallery-assets.js']) {
     const response = await request(asset);
@@ -471,6 +486,8 @@ test('registers customers and restricts order history to the signed-in account',
 test('protects admin data and supports dashboard sign-in and updates', async () => {
   const unauthorized = await request('/api/admin/orders');
   assert.equal(unauthorized.status, 401);
+  const unauthorizedCustomers = await request('/api/admin/customers');
+  assert.equal(unauthorizedCustomers.status, 401);
 
   const invalidLogin = await request('/api/admin/login', {
     method: 'POST',
@@ -493,6 +510,14 @@ test('protects admin data and supports dashboard sign-in and updates', async () 
   const dashboard = await request('/api/admin/summary', { headers: { Cookie: adminCookie } });
   assert.equal(dashboard.status, 200);
   assert.equal((await dashboard.json()).orders_total, 1);
+
+  const customerList = await request('/api/admin/customers', { headers: { Cookie: adminCookie } });
+  assert.equal(customerList.status, 200);
+  assert.equal(customerList.headers.get('cache-control'), 'no-store');
+  const listedCustomers = await customerList.json();
+  assert.ok(listedCustomers.length >= 2);
+  assert.equal(listedCustomers[0].email, 'other.customer@example.test');
+  assert.equal(Object.hasOwn(listedCustomers[0], 'password_hash'), false);
 
   const orders = await request('/api/admin/orders', { headers: { Cookie: adminCookie } });
   assert.equal(orders.status, 200);

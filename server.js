@@ -467,6 +467,21 @@ app.get('/api/admin/summary', requireAdmin, async (req, res, next) => {
   }
 });
 
+app.get('/api/admin/customers', requireAdmin, async (req, res, next) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, name, email, phone, created_at
+       FROM customers
+       ORDER BY created_at DESC
+       LIMIT 500`
+    );
+    res.set('Cache-Control', 'no-store');
+    res.json(result.rows);
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.get('/api/admin/orders', requireAdmin, async (req, res, next) => {
   try {
     const status = cleanText(req.query.status, 30);

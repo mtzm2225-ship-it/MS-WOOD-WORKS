@@ -52,6 +52,8 @@ Customer accounts are separate from administrator access. Customers can register
 
 To manage the website, open `/admin` on the deployed site (or `http://localhost:3000/admin` locally) and sign in with the server's `ADMIN_EMAIL` and `ADMIN_PASSWORD`. Customer credentials do not grant administrator access.
 
+The **Customer accounts** dashboard tab lists registered customers' contact details and registration dates. Passwords are hashed and are never displayed in the dashboard.
+
 - In **Orders**, search by name or phone and change each order's status after following up with the customer.
 - In **Photo comments**, review pending comments and approve or reject them. Only approved comments are public.
 - In **Workers**, create work categories and workers with fixed monthly salaries. Worker records can be edited or archived; archiving preserves their attendance and advance history.
