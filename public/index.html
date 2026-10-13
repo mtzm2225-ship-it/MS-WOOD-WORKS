@@ -52,6 +52,7 @@
           <li><a href="#workshop" class="nav__link">الورشة</a></li>
           <li><a href="#about" class="nav__link">من نحن</a></li>
           <li><a href="#contact" class="nav__link">تواصل</a></li>
+          <li><button class="nav__link nav__login" id="adminLoginOpen" type="button">تسجيل الدخول</button></li>
         </ul>
         <a href="#contact" class="btn btn--gold nav__cta">اطلب عرض سعر مخصص</a>
       </nav>
@@ -569,6 +570,21 @@
   </div>
 
   <button class="to-top" id="toTop" aria-label="العودة للأعلى">↑</button>
+
+  <dialog class="admin-login-dialog" id="adminLoginDialog" aria-labelledby="adminLoginTitle">
+    <form class="admin-login-form" id="adminLoginForm">
+      <button class="admin-login-dialog__close" id="adminLoginClose" type="button" aria-label="إغلاق">×</button>
+      <p class="section-tag">مساحة خاصة</p>
+      <h2 id="adminLoginTitle">دخول الإدارة</h2>
+      <p class="admin-login-form__description">أدخلي بيانات الإدارة للانتقال إلى لوحة التحكم.</p>
+      <label for="siteAdminEmail">البريد الإلكتروني</label>
+      <input id="siteAdminEmail" name="email" type="email" autocomplete="username" required />
+      <label for="siteAdminPassword">كلمة المرور</label>
+      <input id="siteAdminPassword" name="password" type="password" autocomplete="current-password" required />
+      <button class="btn btn--gold btn--block" id="adminLoginSubmit" type="submit">دخول آمن</button>
+      <p class="admin-login-form__note" id="adminLoginNote" role="status" aria-live="polite"></p>
+    </form>
+  </dialog>
 
   <script src="gallery-assets.js" defer></script>
   <script src="ms.js" defer></script>

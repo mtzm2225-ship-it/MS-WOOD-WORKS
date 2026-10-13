@@ -48,7 +48,7 @@ Customer comments are private until an administrator approves them. The dashboar
 
 ## Using the admin dashboard
 
-Open `/admin` on the deployed site, or `http://localhost:3000/admin` locally, then sign in with `ADMIN_EMAIL` and `ADMIN_PASSWORD`. There is no default password or separate account-creation step.
+Click **Sign in** in the main site's navigation and use `ADMIN_EMAIL` and `ADMIN_PASSWORD` to go straight to the dashboard, or open `/admin` on the deployed site (or `http://localhost:3000/admin` locally) and sign in there. There is no default password or separate account-creation step.
 
 - In **Orders**, search by name or phone and change each order's status after following up with the customer.
 - In **Photo comments**, review pending comments and approve or reject them. Only approved comments are public.

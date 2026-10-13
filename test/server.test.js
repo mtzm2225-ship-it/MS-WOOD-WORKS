@@ -262,13 +262,22 @@ test('serves the website, admin dashboard, and assets', async () => {
 
   const home = await request('/');
   assert.equal(home.status, 200);
-  assert.match(await home.text(), /MS Woodworks/);
+  const homePage = await home.text();
+  assert.match(homePage, /MS Woodworks/);
 
   for (const route of ['/admin', '/admin.html']) {
     const admin = await request(route);
     assert.equal(admin.status, 200);
     assert.match(await admin.text(), /إدارة MS Woodworks/);
   }
+
+  assert.match(homePage, /id="adminLoginOpen"/);
+  assert.match(homePage, /id="adminLoginForm"/);
+  const homeScript = await request('/ms.js');
+  assert.equal(homeScript.status, 200);
+  const homeScriptText = await homeScript.text();
+  assert.match(homeScriptText, /fetch\('\/api\/admin\/login'/);
+  assert.match(homeScriptText, /window\.location\.assign\('\/admin'\)/);
 
   for (const asset of ['/ms.css', '/ms.js', '/admin.css', '/admin.js', '/gallery-assets.js']) {
     const response = await request(asset);
@@ -310,6 +319,13 @@ test('validates and stores public orders and comments', async () => {
 test('protects admin data and supports dashboard sign-in and updates', async () => {
   const unauthorized = await request('/api/admin/orders');
   assert.equal(unauthorized.status, 401);
+
+  const invalidLogin = await request('/api/admin/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: process.env.ADMIN_EMAIL, password: 'incorrect-password' })
+  });
+  assert.equal(invalidLogin.status, 401);
 
   const login = await request('/api/admin/login', {
     method: 'POST',

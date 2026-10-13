@@ -18,6 +18,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const commentForm = document.getElementById('galleryCommentForm');
   const commentList = document.getElementById('galleryCommentList');
   const commentNote = document.getElementById('galleryCommentNote');
+  const adminLoginDialog = document.getElementById('adminLoginDialog');
+  const adminLoginForm = document.getElementById('adminLoginForm');
+  const adminLoginNote = document.getElementById('adminLoginNote');
 
   const galleryAssets = window.MSWoodGalleryAssets.gallery;
   const reservedPhotoSlots = 2;
@@ -340,6 +343,49 @@ document.addEventListener('DOMContentLoaded', () => {
         nav.classList.remove('is-open');
         burger.setAttribute('aria-expanded', 'false');
       });
+    });
+  }
+
+  if (adminLoginDialog && adminLoginForm && adminLoginNote) {
+    document.getElementById('adminLoginOpen').addEventListener('click', () => {
+      adminLoginNote.textContent = '';
+      adminLoginDialog.showModal();
+    });
+
+    document.getElementById('adminLoginClose').addEventListener('click', () => {
+      adminLoginDialog.close();
+    });
+
+    adminLoginDialog.addEventListener('click', (event) => {
+      if (event.target === adminLoginDialog) adminLoginDialog.close();
+    });
+
+    adminLoginForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      adminLoginNote.textContent = '';
+      const submit = document.getElementById('adminLoginSubmit');
+      submit.disabled = true;
+      const formData = new FormData(adminLoginForm);
+
+      try {
+        const response = await fetch('/api/admin/login', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: formData.get('email'),
+            password: formData.get('password')
+          })
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || 'تعذر تسجيل الدخول.');
+        window.location.assign('/admin');
+      } catch (error) {
+        adminLoginNote.textContent = error instanceof TypeError
+          ? 'تعذر الاتصال بالخادم. افتحي الموقع من عنوانه المحلي أو المستضاف.'
+          : error.message;
+        submit.disabled = false;
+      }
     });
   }
 
