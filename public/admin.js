@@ -40,6 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   const localMonth = (date = new Date()) => localDate(date).slice(0, 7);
   const money = (value) => `${new Intl.NumberFormat('ar-EG', { maximumFractionDigits: 2 }).format(Number(value) || 0)} ج.م`;
+  const formatTime = (value) => typeof value === 'string' ? value.slice(0, 5) : '';
 
   async function api(url, options = {}) {
     // تبقى الطلبات على النطاق نفسه كي يرسل المتصفح ملف جلسة الإدارة الآمن.
@@ -393,7 +394,7 @@ document.addEventListener('DOMContentLoaded', () => {
         element('h4', 'record-title', record.worker_name),
         element('span', '', record.category_name),
         element('span', '', record.status === 'present'
-          ? `حضور ${record.check_in || '—'} · انصراف ${record.check_out || 'لم يُسجّل'}`
+          ? `حضور ${formatTime(record.check_in) || '—'} · انصراف ${formatTime(record.check_out) || 'لم يُسجّل'}`
           : 'غائب'),
         ...(record.note ? [element('span', '', record.note)] : [])
       );
