@@ -7,7 +7,9 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "seed:demo": "node scripts/seed-demo-data.js --confirm-demo-data",
-    "test": "node --test"
+    "test": "node --test",
+    "vercel-build": "echo 'No build step required for static + serverless API'",
+    "vercel-dev": "vercel dev"
   },
   "engines": {
     "node": "24.x"
@@ -21,5 +23,8 @@
     "express-session": "^1.18.2",
     "helmet": "^8.1.0",
     "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "vercel": "^39.0.0"
   }
 }

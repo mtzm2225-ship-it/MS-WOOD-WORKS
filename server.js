@@ -989,7 +989,9 @@ async function start() {
 
   const port = Number(process.env.PORT || 3000);
   const host = isProduction ? '0.0.0.0' : '127.0.0.1';
-  app.listen(port, host, () => console.log(`MS Woodworks is listening on ${host}:${port}`));
+  app.listen(port, host, () => {
+    console.log(`MS Woodworks is listening on http://${host}:${port}`);
+  });
 }
 
 module.exports = app;
@@ -997,7 +999,7 @@ module.exports = app;
 // نبدأ الخادم محليًا أو عبر Docker فقط؛ أما Vercel فيستورد التطبيق المُصدَّر.
 if (require.main === module) {
   start().catch((error) => {
-    console.error('Unable to start MS Woodworks:', error);
+    console.error('فشل تشغيل الخادم:', error);
     process.exit(1);
   });
 }
