@@ -21,12 +21,12 @@ const isProduction = process.env.NODE_ENV === 'production';
 
 // بيانات administrator generales (الطلبات، التعليقات، العملاء)
 const adminEmail = (process.env.ADMIN_EMAIL || 'mtzm2225@gmail.com').trim().toLowerCase();
-const adminPassword = process.env.ADMIN_PASSWORD || 'mL7P70BVilMq9kHH4xvLCrSqhEU3ooDvwwCCfBgsC4Q';
-const sessionSecret = process.env.SESSION_SECRET || 'xK9mP2vL8nQ4wR7tY1uI3oP5aS6dF8gH0jK1lM2nP3qR4sT5uV6wX7yZ8';
+const adminPassword = process.env.ADMIN_PASSWORD || '23121975@MSWood';
+const sessionSecret = process.env.SESSION_SECRET || 'MSWood_Session_Secret_2026_32PlusChars!!!';
 
 // بيانات المالك (المالك فقط) — تُستخدم لقفل قسم "العاملين" وصلاحيات الإدارة الحساسة
 const ownerUsername = (process.env.OWNER_USERNAME || 'mtzm2225@gmail.com').trim();
-const ownerPassword = process.env.OWNER_PASSWORD || 'mL7P70BVilMq9kHH4xvLCrSqhEU3ooDvwwCCfBgsC4Q';
+const ownerPassword = process.env.OWNER_PASSWORD || '30102006@MSWood';
 
 if (!adminEmail || adminPassword.length < 14) {
   throw new Error('Set ADMIN_EMAIL and a unique ADMIN_PASSWORD of at least 14 characters.');
