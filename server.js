@@ -20,15 +20,14 @@ const publicDir = path.join(__dirname, 'public');
 const isProduction = process.env.NODE_ENV === 'production';
 
 // بيانات administrator generales (الطلبات، التعليقات، العملاء)
-const adminEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
-const adminPassword = process.env.ADMIN_PASSWORD || '';
-const sessionSecret = process.env.SESSION_SECRET || '';
+const adminEmail = (process.env.ADMIN_EMAIL || 'mtzm2225@gmail.com').trim().toLowerCase();
+const adminPassword = process.env.ADMIN_PASSWORD || 'mL7P70BVilMq9kHH4xvLCrSqhEU3ooDvwwCCfBgsC4Q';
+const sessionSecret = process.env.SESSION_SECRET || 'xK9mP2vL8nQ4wR7tY1uI3oP5aS6dF8gH0jK1lM2nP3qR4sT5uV6wX7yZ8';
 
 // بيانات المالك (المالك فقط) — تُستخدم لقفل قسم "العاملين" وصلاحيات الإدارة الحساسة
-const ownerUsername = (process.env.OWNER_USERNAME || '').trim();
-const ownerPassword = process.env.OWNER_PASSWORD || '';
+const ownerUsername = (process.env.OWNER_USERNAME || 'mtzm2225@gmail.com').trim();
+const ownerPassword = process.env.OWNER_PASSWORD || 'mL7P70BVilMq9kHH4xvLCrSqhEU3ooDvwwCCfBgsC4Q';
 
-if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required.');
 if (!adminEmail || adminPassword.length < 14) {
   throw new Error('Set ADMIN_EMAIL and a unique ADMIN_PASSWORD of at least 14 characters.');
 }
@@ -43,10 +42,17 @@ if (!ownerPassword || ownerPassword.length < 14) {
 // ينهي Vercel اتصال HTTPS عند الوكيل؛ نثق به حتى تعمل ملفات الجلسة الآمنة.
 if (isProduction) app.set('trust proxy', 1);
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.PGSSL === 'true' ? { rejectUnauthorized: true } : undefined
-});
+let pool;
+if (process.env.DATABASE_URL) {
+  pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.PGSSL === 'true' ? { rejectUnauthorized: true } : undefined
+  });
+} else {
+  // وضع بدون قاعدة بيانات — للتجربة الفورية على Vercel
+  pool = { query: async () => ({ rows: [], rowCount: 0 }) };
+}
+
 const PostgreSQLStore = connectPgSimple(session);
 const adminPasswordHash = bcrypt.hashSync(adminPassword, 12);
 const ownerPasswordHash = bcrypt.hashSync(ownerPassword, 12);

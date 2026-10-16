@@ -7,7 +7,7 @@
       "destination": "/admin.html"
     },
     {
-      "source": "/(.*)",
+      "source": "/api/:path*",
       "destination": "/api/index.js"
     }
   ],
