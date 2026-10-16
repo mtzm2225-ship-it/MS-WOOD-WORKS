@@ -1,0 +1,5 @@
+ diff.txt           |   0
+ gitstatus.txt      | Bin 0 -> 492 bytes
+ push-output.txt    | Bin 0 -> 2320 bytes
+ push-to-github.ps1 |  19 +++++++++++++++++++
+ 4 files changed, 19 insertions(+)

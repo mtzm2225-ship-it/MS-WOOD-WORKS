@@ -1,0 +1,507 @@
+<!--
+  public/admin.html — واجهة لوحة إدارة MS Woodworks
+  الغرض: صفحة إدارية محمية لإدارة الطلبات، تعليقات الصور، حسابات العملاء، الموظفين، الحضور، الرواتب، والمصروفات.
+  يتطلب تسجيل دخول الإدارة (ADMIN_EMAIL / ADMIN_PASSWORD)، وقسم الموظفين يتطلب تسجيل دخول المالك (OWNER_USERNAME / OWNER_PASSWORD).
+-->
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" content="#211a15" />
+  <title>إدارة MS Woodworks</title>
+  <link rel="icon" type="image/jpeg" href="../img/Gemini_Generated_Image_rm6yb4rm6yb4rm6y.jpeg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../admin.css" />
+</head>
+<body>
+  <header class="admin-header">
+    <a class="admin-brand" href="../" aria-label="العودة إلى موقع MS Woodworks">
+      <img src="../img/Gemini_Generated_Image_rm6yb4rm6yb4rm6y.jpeg" alt="شعار MS Woodworks" />
+      <span><strong>MS Woodworks</strong><small>إدارة الموقع</small></span>
+    </a>
+    <a class="site-link" href="../">عرض الموقع <span aria-hidden="true">↗</span></a>
+  </header>
+
+  <main class="admin-main">
+    <!-- تسجيل دخول الإدارة العامة (الطلبات، التعليقات، العملاء، المصروفات) -->
+    <section class="login-panel" id="loginPanel" aria-labelledby="loginTitle" hidden>
+      <p class="eyebrow">مساحة خاصة — الإدارة</p>
+      <h1 id="loginTitle">تسجيل دخول الإدارة</h1>
+      <p class="muted">أدخل بيانات الإدارة للوصول إلى الطلبات والتعليقات وحسابات العملاء والمصروفات.</p>
+      <form id="loginForm" class="login-form">
+        <label for="adminEmail">البريد الإلكتروني</label>
+        <input id="adminEmail" name="email" type="email" autocomplete="username" required />
+        <label for="adminPassword">كلمة المرور</label>
+        <input id="adminPassword" name="password" type="password" autocomplete="current-password" required />
+        <button class="button button--primary" type="submit">دخول آمن</button>
+        <p class="form-message" id="loginMessage" role="status"></p>
+      </form>
+    </section>
+
+    <!-- تسجيل دخول المالك (لقفل قسم الموظفين / العاملين فقط) — منفصل عن تسجيل دخول الإدارة -->
+    <section class="login-panel" id="ownerLoginPanel" aria-labelledby="ownerLoginTitle" hidden>
+      <p class="eyebrow">مساحة خاصة — المالك فقط</p>
+      <h1 id="ownerLoginTitle">تسجيل دخول المالك</h1>
+      <p class="muted">هذا القسم محجوز للمالك فقط. قسم العاملين والحضور والرواتب والسلف لا يفتح إلا باسم المستخدم وكلمة مرور المالك.</p>
+      <form id="ownerLoginForm" class="login-form">
+        <label for="ownerUsername">اسم المستخدم</label>
+        <input id="ownerUsername" name="username" type="text" autocomplete="username" required />
+        <label for="ownerPassword">كلمة المرور</label>
+        <input id="ownerPassword" name="password" type="password" autocomplete="current-password" required />
+        <button class="button button--primary" type="submit">دخول المالك</button>
+        <button class="button button--quiet" type="button" id="ownerLoginCancel">إلغاء</button>
+        <p class="form-message" id="ownerLoginMessage" role="status"></p>
+      </form>
+    </section>
+
+    <section id="dashboard" hidden>
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">مساحة العمل</p>
+          <h1>لوحة الإدارة</h1>
+          <p class="muted">إدارة طلبات العملاء وتعليقات المعرض والعاملين.</p>
+        </div>
+        <button class="button button--quiet" id="logoutButton" type="button">تسجيل الخروج</button>
+      </div>
+
+      <section class="summary-grid" aria-label="ملخص النشاط">
+        <article class="summary-item"><span>كل الطلبات</span><strong id="ordersTotal">0</strong></article>
+        <article class="summary-item"><span>طلبات جديدة</span><strong id="ordersNew">0</strong></article>
+        <article class="summary-item"><span>تعليقات تنتظر المراجعة</span><strong id="commentsPending">0</strong></article>
+        <article class="summary-item"><span>تعليقات منشورة</span><strong id="commentsApproved">0</strong></article>
+      </section>
+
+      <nav class="dashboard-tabs" aria-label="أقسام الإدارة">
+        <button class="tab-button is-active" type="button" data-view="ordersView" aria-selected="true">الطلبات</button>
+        <button class="tab-button" type="button" data-view="commentsView" aria-selected="false">تعليقات الصور</button>
+        <button class="tab-button" type="button" data-view="customersView" aria-selected="false">حسابات العملاء</button>
+        <button class="tab-button" type="button" data-view="hrView" aria-selected="false">العاملون</button>
+        <button class="tab-button" type="button" data-view="expensesView" aria-selected="false">المصروفات والعُهد</button>
+        <button class="tab-button" type="button" data-view="collectionsView" aria-selected="false">تحصيلات الشغل</button>
+      </nav>
+
+      <section class="dashboard-view" id="ordersView" aria-labelledby="ordersTitle">
+        <div class="view-heading">
+          <div><h2 id="ordersTitle">طلبات العملاء</h2><p class="muted">حدّث حالة الطلب بعد التواصل مع العميل.</p></div>
+          <div class="filters">
+            <label class="visually-hidden" for="orderSearch">ابحث في الطلبات</label>
+            <input id="orderSearch" type="search" placeholder="بحث بالاسم أو الهاتف" />
+            <label class="visually-hidden" for="orderStatusFilter">تصفية حسب الحالة</label>
+            <select id="orderStatusFilter">
+              <option value="all">كل الحالات</option>
+              <option value="new">جديد</option>
+              <option value="contacted">تم التواصل</option>
+              <option value="in-progress">قيد التنفيذ</option>
+              <option value="completed">مكتمل</option>
+              <option value="cancelled">ملغي</option>
+            </select>
+          </div>
+        </div>
+        <p class="inline-message" id="ordersMessage" role="status"></p>
+        <div class="records-list" id="ordersList" aria-live="polite"></div>
+      </section>
+
+      <section class="dashboard-view" id="commentsView" aria-labelledby="commentsTitle" hidden>
+        <div class="view-heading">
+          <div><h2 id="commentsTitle">تعليقات صور المعرض</h2><p class="muted">لن تظهر تعليقات العملاء على الموقع إلا بعد اعتمادها.</p></div>
+          <label class="visually-hidden" for="commentStatusFilter">تصفية حسب حالة التعليق</label>
+          <select id="commentStatusFilter">
+            <option value="pending">بانتظار المراجعة</option>
+            <option value="approved">منشور</option>
+            <option value="rejected">مرفوض</option>
+            <option value="all">كل الحالات</option>
+          </select>
+        </div>
+        <p class="inline-message" id="commentsMessage" role="status"></p>
+        <div class="records-list" id="commentsList" aria-live="polite"></div>
+      </section>
+
+      <section class="dashboard-view" id="customersView" aria-labelledby="customersTitle" hidden>
+        <div class="view-heading">
+          <div>
+            <h2 id="customersTitle">حسابات العملاء</h2>
+            <p class="muted">بيانات التواصل وتاريخ إنشاء الحساب. كلمات المرور لا تُعرض أو تُحفظ بصيغة مقروءة.</p>
+          </div>
+          <button class="button button--quiet" id="refreshCustomers" type="button">تحديث القائمة</button>
+        </div>
+        <p class="inline-message" id="customersMessage" role="status"></p>
+        <div class="records-list" id="customersList" aria-live="polite"></div>
+      </section>
+
+      <section class="dashboard-view" id="hrView" aria-labelledby="hrTitle" hidden>
+        <div class="page-heading hr-heading">
+          <div>
+            <p class="eyebrow">إدارة شؤون العاملين</p>
+            <h2 id="hrTitle">العاملون والرواتب</h2>
+            <p class="muted">سجّل الفئات والعاملين، وتابع الحضور والسُلف وصافي الراتب الشهري بعد خصم السُلف.</p>
+          </div>
+          <label class="month-picker" for="payrollMonth">الشهر
+            <input id="payrollMonth" type="month" required />
+          </label>
+        </div>
+        <section class="summary-grid hr-summary" aria-label="ملخص شؤون العاملين">
+          <article class="summary-item"><span>الفئات</span><strong id="hrCategoryCount">0</strong></article>
+          <article class="summary-item"><span>العاملون النشطون</span><strong id="hrWorkerCount">0</strong></article>
+          <article class="summary-item"><span>إجمالي السُلف هذا الشهر</span><strong id="hrAdvancesTotal">0 ج.م</strong></article>
+          <article class="summary-item"><span>صافي الرواتب بعد السُلف</span><strong id="hrNetTotal">0 ج.م</strong></article>
+        </section>
+
+        <nav class="dashboard-tabs hr-tabs" aria-label="أقسام شؤون العاملين">
+          <button class="tab-button is-active" type="button" data-hr-view="workersView" aria-selected="true">العمال والفئات</button>
+          <button class="tab-button" type="button" data-hr-view="attendanceView" aria-selected="false">الحضور والانصراف</button>
+          <button class="tab-button" type="button" data-hr-view="advancesView" aria-selected="false">السُلف</button>
+          <button class="tab-button" type="button" data-hr-view="payrollView" aria-selected="false">كشف الرواتب</button>
+        </nav>
+
+        <section class="hr-subview" id="workersView">
+          <div class="hr-management-grid">
+            <section class="hr-panel" aria-labelledby="categoriesTitle">
+              <h3 id="categoriesTitle">فئات العمل</h3>
+              <p class="muted">أنشئ فئات مثل نجار أو دهّان، أو غيّر اسم فئة موجودة.</p>
+              <form id="categoryForm" class="hr-form hr-category-form">
+                <label for="categoryName">اسم الفئة</label>
+                <input id="categoryName" name="name" maxlength="80" required />
+                <button class="button button--primary" type="submit">إضافة فئة</button>
+              </form>
+              <p class="inline-message" id="categoriesMessage" role="status"></p>
+              <div class="records-list" id="categoriesList" aria-live="polite"></div>
+            </section>
+
+            <section class="hr-panel" aria-labelledby="workerFormTitle">
+              <h3 id="workerFormTitle">إضافة عامل</h3>
+              <p class="muted">سجّل بيانات العامل وراتبه الشهري الثابت.</p>
+              <form id="workerForm" class="hr-form">
+                <input id="workerId" name="workerId" type="hidden" />
+                <label for="workerName">اسم العامل</label>
+                <input id="workerName" name="name" maxlength="100" autocomplete="name" required />
+                <label for="workerPhone">رقم الهاتف</label>
+                <input id="workerPhone" name="phone" type="tel" maxlength="40" dir="ltr" required />
+                <label for="workerCategory">فئة العمل</label>
+                <select id="workerCategory" name="categoryId" required></select>
+                <label for="workerSalary">الراتب الشهري (جنيه)</label>
+                <input id="workerSalary" name="monthlySalary" type="number" min="0" max="100000000" step="0.01" required />
+                <div class="hr-form-actions">
+                  <button class="button button--primary" type="submit" id="workerSubmit">إضافة العامل</button>
+                  <button class="button button--quiet" type="button" id="workerCancel" hidden>إلغاء التعديل</button>
+                </div>
+              </form>
+              <p class="inline-message" id="workersMessage" role="status"></p>
+            </section>
+          </div>
+          <section class="hr-panel hr-list-panel" aria-labelledby="workersListTitle">
+            <div class="view-heading">
+              <div><h3 id="workersListTitle">سجل العاملين</h3><p class="muted">يمكنك تعديل بيانات العامل أو إيقافه مع الاحتفاظ بسجلاته السابقة.</p></div>
+              <label class="visually-hidden" for="workerStatusFilter">فلترة العاملين</label>
+              <select id="workerStatusFilter">
+                <option value="active">العاملون النشطون</option>
+                <option value="all">كل العاملين</option>
+              </select>
+            </div>
+            <div class="records-list" id="workersList" aria-live="polite"></div>
+          </section>
+        </section>
+
+        <section class="hr-subview" id="attendanceView" hidden>
+          <section class="hr-panel">
+            <div class="view-heading">
+              <div><h3>تسجيل حضور أو انصراف</h3><p class="muted">يمكن تحديث سجل العامل نفسه في اليوم ذاته.</p></div>
+              <label class="month-picker" for="attendanceDate">التاريخ<input id="attendanceDate" type="date" required /></label>
+            </div>
+            <form id="attendanceForm" class="hr-form hr-inline-form">
+              <div class="hr-field"><label for="attendanceWorker">العامل</label><select id="attendanceWorker" name="workerId" required></select></div>
+              <div class="hr-field"><label for="attendanceStatus">الحالة</label>
+                <select id="attendanceStatus" name="status"><option value="present">حاضر</option><option value="absent">غائب</option></select>
+              </div>
+              <div class="hr-field"><label for="checkIn">وقت الحضور</label><input id="checkIn" name="checkIn" type="time" /></div>
+              <div class="hr-field"><label for="checkOut">وقت الانصراف</label><input id="checkOut" name="checkOut" type="time" /></div>
+              <div class="hr-field"><label for="attendanceNote">ملاحظة</label><input id="attendanceNote" name="note" maxlength="500" /></div>
+              <button class="button button--primary" type="submit">حفظ الحضور</button>
+            </form>
+            <p class="inline-message" id="attendanceMessage" role="status"></p>
+          </section>
+          <section class="hr-panel hr-list-panel">
+            <h3>سجل اليوم</h3>
+            <div class="records-list" id="attendanceList" aria-live="polite"></div>
+          </section>
+        </section>
+
+        <section class="hr-subview" id="advancesView" hidden>
+          <section class="hr-panel">
+            <h3>تسجيل سُلفة</h3>
+            <p class="muted">تُسجل السلفة على العامل وتُخصم من كشف راتب الشهر الذي صُرفت فيه.</p>
+            <form id="advanceForm" class="hr-form hr-inline-form">
+              <div class="hr-field"><label for="advanceWorker">العامل</label><select id="advanceWorker" name="workerId" required></select></div>
+              <div class="hr-field"><label for="advanceDate">التاريخ</label><input id="advanceDate" name="date" type="date" required /></div>
+              <div class="hr-field"><label for="advanceAmount">المبلغ (جنيه)</label><input id="advanceAmount" name="amount" type="number" min="0.01" max="100000000" step="0.01" required /></div>
+              <div class="hr-field"><label for="advanceNote">السبب أو ملاحظة</label><input id="advanceNote" name="note" maxlength="500" /></div>
+              <button class="button button--primary" type="submit">حفظ السلفة</button>
+            </form>
+            <p class="inline-message" id="advancesMessage" role="status"></p>
+          </section>
+          <section class="hr-panel hr-list-panel">
+            <h3>سُلف الشهر</h3>
+            <div class="records-list" id="advancesList" aria-live="polite"></div>
+          </section>
+        </section>
+
+        <section class="hr-subview" id="payrollView" hidden>
+          <section class="hr-panel">
+            <h3>كشف الرواتب الشهري</h3>
+            <p class="muted">صافي المستحق = الراتب الشهري الثابت − سُلف الشهر. الحضور مسجل للمتابعة ولا يخصم تلقائيًا.</p>
+            <p class="inline-message" id="payrollMessage" role="status"></p>
+            <div class="payroll-table-wrap">
+              <table class="payroll-table">
+                <thead><tr><th>العامل</th><th>الفئة</th><th>الراتب الشهري</th><th>سُلف الشهر</th><th>صافي المستحق</th></tr></thead>
+                <tbody id="payrollList"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+      </section>
+
+      <section class="dashboard-view" id="expensesView" aria-labelledby="expensesTitle" hidden>
+          <div class="page-heading hr-heading">
+            <div>
+              <p class="eyebrow">الحسابات اليومية</p>
+              <h2 id="expensesTitle">المصروفات والعُهد</h2>
+              <p class="muted">تابع المصروفات من العُهدة وخارجها، وتسليم الأموال والمرتجع والرصيد المتاح لكل مسؤول.</p>
+            </div>
+            <div class="expense-date-range">
+              <label class="month-picker" for="expenseFrom">من تاريخ
+                <input id="expenseFrom" type="date" required />
+              </label>
+              <label class="month-picker" for="expenseTo">إلى تاريخ
+                <input id="expenseTo" type="date" required />
+              </label>
+              <button class="button button--quiet" id="refreshExpenses" type="button">عرض الفترة</button>
+            </div>
+          </div>
+          <p class="inline-message" id="expensesMessage" role="status"></p>
+
+          <section class="summary-grid hr-summary expense-summary" aria-label="ملخص المصروفات والعُهد">
+            <article class="summary-item"><span>إجمالي المصروفات</span><strong id="expensesTotal">0 ج.م</strong></article>
+            <article class="summary-item"><span>مصروفات من العُهد</span><strong id="custodyExpensesTotal">0 ج.م</strong></article>
+            <article class="summary-item"><span>مصروفات مباشرة خارج العُهد</span><strong id="directExpensesTotal">0 ج.م</strong></article>
+            <article class="summary-item"><span>الرصيد المتبقي في العُهد</span><strong id="custodyBalanceTotal">0 ج.م</strong></article>
+          </section>
+
+          <div class="hr-management-grid expense-forms">
+            <section class="hr-panel" aria-labelledby="newCustodyTitle">
+              <h3 id="newCustodyTitle">تسليم عُهدة جديدة</h3>
+              <p class="muted">سجّل اسم المسؤول والمبلغ المستلم؛ يظهر المبلغ كرصد افتتاحي في سجل العُهدة.</p>
+              <form id="newCustodyForm" class="hr-form">
+                <label for="custodyHolder">اسم مستلم العُهدة</label>
+                <input id="custodyHolder" name="holderName" maxlength="100" autocomplete="name" required />
+                <label for="custodyInitialAmount">المبلغ المسلم (جنيه)</label>
+                <input id="custodyInitialAmount" name="amount" type="number" min="0.01" max="100000000" step="0.01" required />
+                <label for="custodyInitialDate">تاريخ التسليم</label>
+                <input id="custodyInitialDate" name="date" type="date" required />
+                <label for="custodyInitialNote">ملاحظة أو رقم مستند</label>
+                <input id="custodyInitialNote" name="note" maxlength="500" />
+                <button class="button button--primary" type="submit">تسجيل وتسليم العُهدة</button>
+              </form>
+            </section>
+
+            <section class="hr-panel" aria-labelledby="custodyMovementTitle">
+              <h3 id="custodyMovementTitle">زيادة عُهدة أو إرجاع مبلغ</h3>
+              <p class="muted">كل زيادة أو مبلغ مرتجع يُسجل كحركة مستقلة مع التاريخ والملاحظة.</p>
+              <form id="custodyMovementForm" class="hr-form">
+                <label for="movementCustody">مسؤول العُهدة</label>
+                <select id="movementCustody" name="custodyId" required></select>
+                <label for="custodyMovementType">نوع الحركة</label>
+                <select id="custodyMovementType" name="type">
+                  <option value="issued">تسليم مبلغ إضافي</option>
+                  <option value="returned">إرجاع مبلغ للخزنة</option>
+                </select>
+                <label for="custodyMovementAmount">المبلغ (جنيه)</label>
+                <input id="custodyMovementAmount" name="amount" type="number" min="0.01" max="100000000" step="0.01" required />
+                <label for="custodyMovementDate">التاريخ</label>
+                <input id="custodyMovementDate" name="date" type="date" required />
+                <label for="custodyMovementNote">السبب أو ملاحظة</label>
+                <input id="custodyMovementNote" name="note" maxlength="500" />
+                <button class="button button--primary" type="submit">حفظ حركة العُهدة</button>
+              </form>
+            </section>
+
+            <section class="hr-panel expense-entry-panel" aria-labelledby="newExpenseTitle">
+              <h3 id="newExpenseTitle">تسجيل مصروف</h3>
+              <p class="muted">مصروف العُهدة يُخصم من رصيد المسؤول؛ والمصروف المباشر يُسجل خارجها ضمن الإجمالي.</p>
+              <form id="expenseForm" class="hr-form hr-inline-form expense-form">
+                <div class="hr-field"><label for="expenseSource">مصدر الدفع</label>
+                  <select id="expenseSource" name="source">
+                    <option value="custody">من عُهدة</option>
+                    <option value="direct">مصروف مباشر خارج العُهد</option>
+                  </select>
+                </div>
+                <div class="hr-field" id="expenseCustodyField"><label for="expenseCustody">مسؤول العُهدة</label>
+                  <select id="expenseCustody" name="custodyId" required></select>
+                </div>
+                <div class="hr-field"><label for="expenseDate">التاريخ</label><input id="expenseDate" name="date" type="date" required /></div>
+                <div class="hr-field"><label for="expenseAmount">المبلغ (جنيه)</label><input id="expenseAmount" name="amount" type="number" min="0.01" max="100000000" step="0.01" required /></div>
+                <div class="hr-field"><label for="expenseCategory">بند المصروف</label>
+                  <input id="expenseCategory" name="category" list="expenseCategorySuggestions" maxlength="100" placeholder="خامات، نقل، صيانة..." required />
+                  <datalist id="expenseCategorySuggestions">
+                    <option value="خامات وأخشاب"></option>
+                    <option value="أدوات ومستلزمات"></option>
+                    <option value="نقل وشحن"></option>
+                    <option value="صيانة"></option>
+                    <option value="كهرباء ومرافق"></option>
+                    <option value="أجور يومية"></option>
+                    <option value="أخرى"></option>
+                  </datalist>
+                </div>
+                <div class="hr-field"><label for="expenseDescription">التفاصيل</label><input id="expenseDescription" name="description" maxlength="1000" required /></div>
+                <div class="hr-field"><label for="expensePaidTo">المورّد أو المستلم</label><input id="expensePaidTo" name="paidTo" maxlength="120" /></div>
+                <div class="hr-field"><label for="expensePaymentMethod">طريقة الدفع</label>
+                  <select id="expensePaymentMethod" name="paymentMethod">
+                    <option value="cash">نقدًا</option>
+                    <option value="transfer">تحويل بنكي</option>
+                    <option value="card">بطاقة</option>
+                    <option value="wallet">محفظة إلكترونية</option>
+                    <option value="other">أخرى</option>
+                  </select>
+                </div>
+                <div class="hr-field"><label for="expenseReference">رقم الفاتورة أو الإيصال</label><input id="expenseReference" name="reference" maxlength="100" /></div>
+                <div class="hr-field expense-note-field"><label for="expenseNote">ملاحظات إضافية</label><input id="expenseNote" name="note" maxlength="500" /></div>
+                <button class="button button--primary" type="submit">حفظ المصروف</button>
+              </form>
+            </section>
+          </div>
+
+          <div class="hr-management-grid expense-records-grid">
+            <section class="hr-panel" aria-labelledby="custodyBalancesTitle">
+              <h3 id="custodyBalancesTitle">أرصدة العُهد الحالية</h3>
+              <div class="records-list" id="custodyBalancesList" aria-live="polite"></div>
+            </section>
+            <section class="hr-panel" aria-labelledby="expenseCategoriesTitle">
+              <h3 id="expenseCategoriesTitle">التجميع حسب بند المصروف</h3>
+              <div class="payroll-table-wrap">
+                <table class="payroll-table">
+                  <thead><tr><th>البند</th><th>عدد الحركات</th><th>الإجمالي</th></tr></thead>
+                  <tbody id="expenseCategoriesList"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+
+          <section class="hr-panel hr-list-panel" aria-labelledby="expensesListTitle">
+            <h3 id="expensesListTitle">سجل المصروفات للفترة</h3>
+            <div class="records-list" id="expensesList" aria-live="polite"></div>
+          </section>
+          <section class="hr-panel hr-list-panel" aria-labelledby="custodyMovementsTitle">
+            <h3 id="custodyMovementsTitle">سجل تسليم واسترجاع العُهد للفترة</h3>
+            <div class="records-list" id="custodyMovementsList" aria-live="polite"></div>
+          </section>
+        </section>
+
+        <section class="dashboard-view" id="collectionsView" aria-labelledby="collectionsTitle" hidden>
+          <div class="page-heading hr-heading">
+            <div>
+              <p class="eyebrow">إيرادات الشغل</p>
+              <h2 id="collectionsTitle">تحصيلات العملاء</h2>
+              <p class="muted">سجّل دفعات المشروع والطلبات والإيرادات العامة. التحصيل الزائد مسموح ويظهر بوضوح في رصيد المشروع.</p>
+            </div>
+            <div class="expense-date-range">
+              <label class="month-picker" for="collectionFrom">من تاريخ
+                <input id="collectionFrom" type="date" required />
+              </label>
+              <label class="month-picker" for="collectionTo">إلى تاريخ
+                <input id="collectionTo" type="date" required />
+              </label>
+              <button class="button button--quiet" id="refreshCollections" type="button">عرض الفترة</button>
+            </div>
+          </div>
+          <p class="inline-message" id="collectionsMessage" role="status"></p>
+
+          <section class="summary-grid hr-summary expense-summary" aria-label="ملخص التحصيلات">
+            <article class="summary-item"><span>إجمالي التحصيل في الفترة</span><strong id="collectionsTotal">0 ج.م</strong></article>
+            <article class="summary-item"><span>دفعات المشاريع</span><strong id="projectCollectionsTotal">0 ج.م</strong></article>
+            <article class="summary-item"><span>تحصيلات الطلبات</span><strong id="orderCollectionsTotal">0 ج.م</strong></article>
+            <article class="summary-item"><span>إيرادات عامة غير مرتبطة</span><strong id="generalCollectionsTotal">0 ج.م</strong></article>
+          </section>
+
+          <div class="hr-management-grid collection-forms">
+            <section class="hr-panel" aria-labelledby="createProjectTitle">
+              <h3 id="createProjectTitle">تسجيل شغل متفق عليه</h3>
+              <p class="muted">اربط طلب العميل بالمشروع وسجّل قيمة الاتفاق؛ أضف الدفعات على مراحل واحسب المتبقي تلقائيًا.</p>
+              <form id="projectForm" class="hr-form">
+                <label for="projectOrder">طلب العميل</label>
+                <select id="projectOrder" name="orderId" required></select>
+                <label for="projectName">وصف الشغل</label>
+                <input id="projectName" name="name" maxlength="200" required />
+                <label for="projectAgreedAmount">قيمة الاتفاق (جنيه)</label>
+                <input id="projectAgreedAmount" name="agreedAmount" type="number" min="0.01" max="100000000" step="0.01" required />
+                <button class="button button--primary" type="submit">تسجيل المشروع</button>
+              </form>
+            </section>
+
+            <section class="hr-panel" aria-labelledby="recordReceiptTitle">
+              <h3 id="recordReceiptTitle">تسجيل تحصيل</h3>
+              <p class="muted">اختر نوع التحصيل: مشروع بقيمة اتفاق، طلب دون إجمالي، أو إيراد عام مستقل.</p>
+              <form id="receiptForm" class="hr-form">
+                <label for="receiptType">نوع التحصيل</label>
+                <select id="receiptType" name="type">
+                  <option value="project">دفعة لمشروع متفق عليه</option>
+                  <option value="order">تحصيل لطلب دون قيمة إجمالية</option>
+                  <option value="general">إيراد عام غير مرتبط بطلب</option>
+                </select>
+                <div id="receiptProjectField">
+                  <label for="receiptProject">المشروع</label>
+                  <select id="receiptProject" name="projectId" required></select>
+                </div>
+                <div id="receiptOrderField" hidden>
+                  <label for="receiptOrder">طلب العميل</label>
+                  <select id="receiptOrder" name="orderId" disabled></select>
+                </div>
+                <label for="receiptDate">تاريخ التحصيل</label>
+                <input id="receiptDate" name="date" type="date" required />
+                <label for="receiptAmount">المبلغ المستلم (جنيه)</label>
+                <input id="receiptAmount" name="amount" type="number" min="0.01" max="100000000" step="0.01" required />
+                <label for="receiptDescription">بيان التحصيل أو سبب الدفعة</label>
+                <input id="receiptDescription" name="description" maxlength="500" required />
+                <label for="receiptPaidBy">اسم الدافع</label>
+                <input id="receiptPaidBy" name="paidBy" maxlength="120" />
+                <label for="receiptPaymentMethod">طريقة الاستلام</label>
+                <select id="receiptPaymentMethod" name="paymentMethod">
+                  <option value="cash">نقدًا</option>
+                  <option value="transfer">تحويل بنكي</option>
+                  <option value="card">بطاقة</option>
+                  <option value="wallet">محفظة إلكترونية</option>
+                  <option value="other">أخرى</option>
+                </select>
+                <label for="receiptReference">رقم الإيصال أو التحويل</label>
+                <input id="receiptReference" name="reference" maxlength="100" />
+                <label for="receiptNote">ملاحظات</label>
+                <input id="receiptNote" name="note" maxlength="500" />
+                <button class="button button--primary" type="submit">حفظ التحصيل</button>
+              </form>
+            </section>
+          </div>
+
+          <section class="hr-panel hr-list-panel" aria-labelledby="projectsListTitle">
+            <h3 id="projectsListTitle">المشاريع والأرصدة</h3>
+            <div class="payroll-table-wrap">
+              <table class="payroll-table">
+                <thead><tr><th>المشروع</th><th>العميل</th><th>قيمة الاتفاق</th><th>المحصل</th><th>المتبقي / الزيادة</th></tr></thead>
+                <tbody id="collectionProjectsList"></tbody>
+              </table>
+            </div>
+          </section>
+          <section class="hr-panel hr-list-panel" aria-labelledby="receiptsListTitle">
+            <h3 id="receiptsListTitle">سجل التحصيلات للفترة</h3>
+            <div class="records-list" id="receiptsList" aria-live="polite"></div>
+          </section>
+        </section>
+      </section>
+    </section>
+  </main>
+
+  <footer class="admin-footer">MS Woodworks <span>·</span> لوحة إدارة خاصة</footer>
+  <script src="../gallery-assets.js" defer></script>
+  <script src="../admin.js" defer></script>
+</body>
+</html>
