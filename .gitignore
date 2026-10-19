@@ -19,3 +19,6 @@ hash-working.txt
 verify-log.txt
 .local-preview-server.js
 *.log
+.vercel
+env-prod.txt
+shot-prod*.png
