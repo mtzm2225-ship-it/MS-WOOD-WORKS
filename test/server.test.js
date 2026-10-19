@@ -8,6 +8,8 @@ process.env.NODE_ENV = 'test';
 process.env.DATABASE_URL = 'postgres://test:test@127.0.0.1:5432/mswood_test';
 process.env.ADMIN_EMAIL = 'admin@example.test';
 process.env.ADMIN_PASSWORD = 'test-only-password-long-enough';
+process.env.OWNER_USERNAME = 'owner@example.test';
+process.env.OWNER_PASSWORD = 'test-only-owner-password-long-enough';
 process.env.SESSION_SECRET = 'test-only-session-secret-long-enough';
 
 const approvedComment = {
@@ -245,7 +247,7 @@ class TestPool {
         .sort((first, second) => Number(second.total) - Number(first.total));
       return { rows, rowCount: rows.length };
     }
-    if (query.startsWith('SELECT e.id, e.expense_date')) {
+    if (query.startsWith('SELECT e.id, COUNT(*) OVER()::int AS result_total, e.expense_date')) {
       const rows = expenses.filter((expense) => expense.expense_date >= values[0] && expense.expense_date <= values[1])
         .map((expense) => ({
           ...expense,
@@ -254,7 +256,7 @@ class TestPool {
         .reverse();
       return { rows, rowCount: rows.length };
     }
-    if (query.startsWith('SELECT m.id, m.custody_id, c.holder_name')) {
+    if (query.startsWith('SELECT m.id, COUNT(*) OVER()::int AS result_total, m.custody_id')) {
       const rows = custodyMovements.filter((movement) => movement.movement_date >= values[0] && movement.movement_date <= values[1])
         .map((movement) => ({
           ...movement,
@@ -564,7 +566,9 @@ test('serves the website, admin dashboard, and assets', async () => {
     assert.match(adminPage, /إدارة MS Woodworks/);
     assert.match(adminPage, /data-view="customersView"/);
     assert.match(adminPage, /كلمات المرور لا تُعرض/);
-    assert.match(adminPage, /data-view="expensesView"/);
+    assert.match(adminPage, /data-view="ownerMoneyView"/);
+    assert.match(adminPage, /data-owner-money-view="expensesView"/);
+    assert.match(adminPage, /data-owner-money-view="collectionsView"/);
   }
 
   assert.match(homePage, /id="customerAccountOpen"/);
@@ -654,6 +658,10 @@ test('registers customers and restricts order history to the signed-in account',
   assert.equal((await sessionResponse.json()).authenticated, true);
   const customerAdminData = await request('/api/admin/summary', { headers: { Cookie: customerCookie } });
   assert.equal(customerAdminData.status, 401);
+  const customerMoneyData = await request('/api/admin/expenses?from=2026-10-01&to=2026-10-31', {
+    headers: { Cookie: customerCookie }
+  });
+  assert.equal(customerMoneyData.status, 403);
 
   const customerOrder = await request('/api/orders', {
     method: 'POST',
@@ -787,7 +795,7 @@ test('protects admin data and supports dashboard sign-in and updates', async () 
 
 test('manages worker categories, attendance, advances, and monthly payroll', async () => {
   const unauthorized = await request('/api/admin/hr/categories');
-  assert.equal(unauthorized.status, 401);
+  assert.equal(unauthorized.status, 403);
 
   const login = await request('/api/admin/login', {
     method: 'POST',
@@ -795,8 +803,37 @@ test('manages worker categories, attendance, advances, and monthly payroll', asy
     body: JSON.stringify({ email: process.env.ADMIN_EMAIL, password: process.env.ADMIN_PASSWORD })
   });
   assert.equal(login.status, 200);
-  const cookie = login.headers.getSetCookie().map((value) => value.split(';')[0]).join('; ');
-  const headers = { Cookie: cookie, 'Content-Type': 'application/json' };
+  let cookie = login.headers.getSetCookie().map((value) => value.split(';')[0]).join('; ');
+  let headers = { Cookie: cookie, 'Content-Type': 'application/json' };
+  const adminCanReadHrBeforeOwnerLogin = await request('/api/admin/hr/categories', { headers });
+  assert.equal(adminCanReadHrBeforeOwnerLogin.status, 403);
+  const adminFinanceRequests = [
+    request('/api/admin/custodies', { headers }),
+    request('/api/admin/custodies', { method: 'POST', headers, body: JSON.stringify({}) }),
+    request('/api/admin/custodies/1/movements', { method: 'POST', headers, body: JSON.stringify({}) }),
+    request('/api/admin/expenses?from=2026-10-01&to=2026-10-31', { headers }),
+    request('/api/admin/expenses', { method: 'POST', headers, body: JSON.stringify({}) }),
+    request('/api/admin/collections?from=2026-10-01&to=2026-10-31', { headers }),
+    request('/api/admin/projects', { method: 'POST', headers, body: JSON.stringify({}) }),
+    request('/api/admin/projects/1', { method: 'PATCH', headers, body: JSON.stringify({}) }),
+    request('/api/admin/collections', { method: 'POST', headers, body: JSON.stringify({}) })
+  ];
+  const adminFinanceResponses = await Promise.all(adminFinanceRequests);
+  assert.ok(adminFinanceResponses.every((response) => response.status === 403));
+
+  const ownerLogin = await request('/api/owner/login', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      username: process.env.OWNER_USERNAME,
+      password: process.env.OWNER_PASSWORD
+    })
+  });
+  assert.equal(ownerLogin.status, 200);
+  cookie = ownerLogin.headers.getSetCookie().map((value) => value.split(';')[0]).join('; ');
+  headers = { Cookie: cookie, 'Content-Type': 'application/json' };
+  assert.equal((await (await request('/api/admin/session', { headers })).json()).authenticated, true);
+  assert.equal((await (await request('/api/owner/session', { headers })).json()).authenticated, true);
 
   const invalidCategory = await request('/api/admin/hr/categories', {
     method: 'POST',
@@ -940,19 +977,70 @@ test('manages worker categories, attendance, advances, and monthly payroll', asy
     headers
   });
   assert.equal(deleteUnusedCategory.status, 204);
+
+  const logout = await request('/api/admin/logout', { method: 'POST', headers });
+  assert.equal(logout.status, 204);
+  const adminSessionAfterLogout = await request('/api/admin/session', { headers });
+  const ownerSessionAfterLogout = await request('/api/owner/session', { headers });
+  assert.equal((await adminSessionAfterLogout.json()).authenticated, false);
+  assert.equal((await ownerSessionAfterLogout.json()).authenticated, false);
+
+  const ownerFirstLogin = await request('/api/owner/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      username: process.env.OWNER_USERNAME,
+      password: process.env.OWNER_PASSWORD
+    })
+  });
+  assert.equal(ownerFirstLogin.status, 200);
+  const ownerCookie = ownerFirstLogin.headers.getSetCookie().map((value) => value.split(';')[0]).join('; ');
+  const adminAfterOwnerLogin = await request('/api/admin/login', {
+    method: 'POST',
+    headers: { Cookie: ownerCookie, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: process.env.ADMIN_EMAIL, password: process.env.ADMIN_PASSWORD })
+  });
+  assert.equal(adminAfterOwnerLogin.status, 200);
+  const combinedCookie = adminAfterOwnerLogin.headers.getSetCookie().map((value) => value.split(';')[0]).join('; ');
+  const combinedHeaders = { Cookie: combinedCookie };
+  assert.equal((await (await request('/api/admin/session', { headers: combinedHeaders })).json()).authenticated, true);
+  assert.equal((await (await request('/api/owner/session', { headers: combinedHeaders })).json()).authenticated, true);
+  assert.equal((await request('/api/admin/logout', { method: 'POST', headers: combinedHeaders })).status, 204);
+
+  const ownerOnlyLogin = await request('/api/owner/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      username: process.env.OWNER_USERNAME,
+      password: process.env.OWNER_PASSWORD
+    })
+  });
+  assert.equal(ownerOnlyLogin.status, 200);
+  const ownerOnlyCookie = ownerOnlyLogin.headers.getSetCookie().map((value) => value.split(';')[0]).join('; ');
+  const ownerOnlyHeaders = { Cookie: ownerOnlyCookie };
+  const ownerOnlyFinance = await request('/api/admin/expenses?from=2026-10-01&to=2026-10-31', {
+    headers: ownerOnlyHeaders
+  });
+  assert.equal(ownerOnlyFinance.status, 200);
+  const ownerOnlyAdminSummary = await request('/api/admin/summary', { headers: ownerOnlyHeaders });
+  assert.equal(ownerOnlyAdminSummary.status, 401);
+  assert.equal((await request('/api/admin/logout', {
+    method: 'POST',
+    headers: ownerOnlyHeaders
+  })).status, 204);
 });
 
 test('tracks custody balances and separates custody from direct expenses', async () => {
   const unauthorized = await request('/api/admin/expenses?from=2026-10-01&to=2026-10-31');
-  assert.equal(unauthorized.status, 401);
+  assert.equal(unauthorized.status, 403);
 
-  const login = await request('/api/admin/login', {
+  const ownerLogin = await request('/api/owner/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: process.env.ADMIN_EMAIL, password: process.env.ADMIN_PASSWORD })
+    body: JSON.stringify({ username: process.env.OWNER_USERNAME, password: process.env.OWNER_PASSWORD })
   });
-  assert.equal(login.status, 200);
-  const cookie = login.headers.getSetCookie().map((value) => value.split(';')[0]).join('; ');
+  assert.equal(ownerLogin.status, 200);
+  const cookie = ownerLogin.headers.getSetCookie().map((value) => value.split(';')[0]).join('; ');
   const headers = { Cookie: cookie, 'Content-Type': 'application/json' };
 
   const invalidRange = await request('/api/admin/expenses?from=2026-10-31&to=2026-10-01', { headers });

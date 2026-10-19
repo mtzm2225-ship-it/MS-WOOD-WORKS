@@ -5,15 +5,12 @@
  */
 document.addEventListener('DOMContentLoaded', () => {
   // عناصر واجهة العرض والتحريك
-  const preloader = document.getElementById('preloader');
   const scrollProgress = document.getElementById('scrollProgress');
   const burger = document.getElementById('burger');
   const nav = document.getElementById('nav');
   const header = document.getElementById('header');
   const toTop = document.getElementById('toTop');
-  const revealEls = document.querySelectorAll('.reveal');
   const navLinks = document.querySelectorAll('.nav__link');
-  const counters = document.querySelectorAll('[data-count]');
 
   // عناصر نموذج التواصل مع الورشة
   const form = document.getElementById('contactForm');
@@ -21,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // عناصر المعرض وتعليقات العملاء
   const galleryGrid = document.getElementById('galleryGrid');
+  const galleryDetailsDialog = document.getElementById('galleryDetails');
   const customerReviews = document.getElementById('customerReviews');
   const customerReviewForm = document.getElementById('customerReviewForm');
   const customerReviewNote = document.getElementById('customerReviewNote');
@@ -47,7 +45,6 @@ document.addEventListener('DOMContentLoaded', () => {
   let customerAccount = null;
 
   const galleryAssets = window.MSWoodGalleryAssets.gallery;
-  const reservedPhotoSlots = 2;
 
   if (customerReviewForm) {
     const projectSelect = customerReviewForm.elements.namedItem('galleryId');
@@ -59,41 +56,51 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // نستخدم مستمعًا واحدًا للمعرض لأن بطاقاته تُنشأ ديناميكيًا.
   const renderGallery = () => {
     if (!galleryGrid) return;
 
     galleryGrid.classList.add('gallery__grid--curated');
-    const layouts = ['tile--feature', 'tile--side', 'tile--side'];
-    const photoTiles = galleryAssets.map((item, index) => {
-      return `
-        <figure class="tile ${layouts[index] || 'tile--small'} reveal" data-delay="${(index % 5) + 1}">
-          <img src="${item.src}" alt="${item.alt}" loading="lazy" />
-          <figcaption class="tile__cap">
-            <span class="tile__cat">${item.category}</span>
-            <h3 class="tile__title">${item.title}</h3>
-            <span class="tile__more">شاهد التفاصيل <i>→</i></span>
-            <button class="tile__comment" type="button" data-comments-for="${item.id}">تعليقات العملاء</button>
-          </figcaption>
-        </figure>
-      `;
-    });
-    const emptyTiles = Array.from(
-      { length: Math.max(0, reservedPhotoSlots) },
-      (_, index) => `<figure class="tile tile--empty" aria-label="مكان مخصص لصورة مشروع قادم"><span>مشروع قادم <b>0${index + 1}</b></span></figure>`
-    );
-    galleryGrid.innerHTML = [...photoTiles, ...emptyTiles].join('');
+    galleryGrid.replaceChildren();
+    galleryAssets.forEach((item, index) => {
+      const card = document.createElement('article');
+      card.className = `tile ${index === 0 ? 'tile--feature' : 'tile--side'}`;
+      const detailsButton = document.createElement('button');
+      detailsButton.className = 'tile__details';
+      detailsButton.type = 'button';
+      detailsButton.dataset.galleryDetails = item.id;
+      detailsButton.setAttribute('aria-label', `عرض تفاصيل ${item.title}`);
 
-    const revealItems = galleryGrid.querySelectorAll('.reveal');
-    revealItems.forEach((el) => {
-      const delay = Number(el.dataset.delay || 0);
-      el.style.setProperty('--delay', delay);
-      revealObserver.observe(el);
+      const image = document.createElement('img');
+      image.src = item.src;
+      image.alt = item.alt;
+      image.loading = index === 0 ? 'eager' : 'lazy';
+      const caption = document.createElement('span');
+      caption.className = 'tile__cap';
+      const category = document.createElement('span');
+      category.className = 'tile__cat';
+      category.textContent = item.category;
+      const title = document.createElement('span');
+      title.className = 'tile__title';
+      title.textContent = item.title;
+      const action = document.createElement('span');
+      action.className = 'tile__more';
+      action.textContent = 'عرض النموذج';
+      caption.append(category, title, action);
+      detailsButton.append(image, caption);
+
+      const commentsButton = document.createElement('button');
+      commentsButton.className = 'tile__comment';
+      commentsButton.type = 'button';
+      commentsButton.dataset.commentsFor = item.id;
+      commentsButton.textContent = 'التعليقات';
+      card.append(detailsButton, commentsButton);
+      galleryGrid.append(card);
     });
   };
 
   const renderComments = (comments) => {
     commentList.replaceChildren();
+    commentList.setAttribute('aria-busy', 'false');
     if (!comments.length) {
       const empty = document.createElement('p');
       empty.className = 'gallery-comments__empty';
@@ -118,25 +125,28 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const loadComments = async (galleryId) => {
-    commentList.textContent = 'جار تحميل التعليقات...';
+    commentList.setAttribute('aria-busy', 'true');
+    commentList.textContent = 'جار تحميل التعليقات…';
     try {
       const response = await fetch(`/api/comments/${encodeURIComponent(galleryId)}`);
       const comments = await response.json();
       if (!response.ok) throw new Error(comments.error || 'تعذر تحميل التعليقات.');
       renderComments(comments);
     } catch {
-      commentList.textContent = 'تعذر تحميل التعليقات الآن. تأكد من فتح الموقع من الخادم.';
+        commentList.setAttribute('aria-busy', 'false');
+        commentList.textContent = 'تعذر تحميل التعليقات الآن. حاول مرة أخرى لاحقًا.';
     }
   };
 
   const renderCustomerReviews = (reviews) => {
     if (!customerReviews) return;
     customerReviews.replaceChildren();
+    customerReviews.setAttribute('aria-busy', 'false');
 
     if (!reviews.length) {
       const empty = document.createElement('p');
       empty.className = 'customer-reviews__empty';
-      empty.textContent = 'لا توجد آراء منشورة حتى الآن. يسعدنا أن تشاركنا تجربتك بعد مشاهدة أعمالنا.';
+      empty.textContent = 'لا توجد آراء منشورة بعد. إذا تعاملت مع الورشة، يسعدنا أن تشاركنا تجربتك.';
       customerReviews.append(empty);
       return;
     }
@@ -144,68 +154,79 @@ document.addEventListener('DOMContentLoaded', () => {
     reviews.slice(0, 6).forEach((review) => {
       const card = document.createElement('article');
       card.className = 'customer-review';
-
-      const mark = document.createElement('span');
-      mark.className = 'customer-review__mark';
-      mark.setAttribute('aria-hidden', 'true');
-      mark.textContent = '”';
-
       const body = document.createElement('p');
       body.className = 'customer-review__body';
       body.textContent = review.body;
-
       const author = document.createElement('strong');
       author.className = 'customer-review__author';
       author.textContent = review.name;
-
       const project = galleryAssets.find((asset) => asset.id === review.gallery_id);
       const context = document.createElement('span');
       context.className = 'customer-review__project';
       context.textContent = project ? `عن ${project.title}` : 'من عملائنا';
-
-      card.append(mark, body, author, context);
+      card.append(body, author, context);
       customerReviews.append(card);
     });
   };
 
   const loadCustomerReviews = async () => {
     if (!customerReviews) return;
+    customerReviews.setAttribute('aria-busy', 'true');
 
     try {
       const response = await fetch('/api/comments');
       if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error('هذه النسخة لا تشغّل خادم الموقع؛ يلزم ربطها بالـBackend لعرض الآراء واستقبالها.');
-        }
-        throw new Error('تعذر الاتصال بخدمة الآراء. افتح الموقع من عنوان الاستضافة المرتبط بالخادم.');
+        const error = new Error(response.status === 404
+          ? 'عرض الآراء غير متاح على هذا العنوان حاليًا.'
+          : 'تعذر تحميل الآراء الآن. حاول مرة أخرى لاحقًا.');
+        error.status = response.status;
+        throw error;
       }
-
-      const reviews = await response.json();
-      renderCustomerReviews(reviews);
+      renderCustomerReviews(await response.json());
     } catch (error) {
+      customerReviews.setAttribute('aria-busy', 'false');
       customerReviews.replaceChildren();
       const unavailable = document.createElement('p');
       unavailable.className = 'customer-reviews__empty';
-      unavailable.textContent = error.message || 'تعذر تحميل آراء العملاء الآن.';
+      unavailable.textContent = error.message || 'تعذر تحميل الآراء الآن.';
       customerReviews.append(unavailable);
-
-      if (customerReviewForm) {
+      if (customerReviewForm && error.status === 404) {
         customerReviewForm.querySelectorAll('input, select, textarea, button').forEach((field) => {
           field.disabled = true;
         });
-        customerReviewNote.textContent = 'إرسال الرأي غير متاح حتى يتم ربط الموقع بالخادم.';
+        customerReviewNote.textContent = 'إرسال الآراء غير متاح على هذا العنوان.';
       }
     }
   };
 
   loadCustomerReviews();
 
-  if (galleryGrid && commentsDialog) {
-    // هذا المستمع الواحد يتعامل مع أزرار التعليقات لكل الصور.
+  let galleryDetailsTrigger = null;
+  const showGalleryDetails = (item, trigger) => {
+    if (!galleryDetailsDialog) return;
+    galleryDetailsTrigger = trigger;
+    document.getElementById('galleryDetailsTitle').textContent = item.title;
+    document.getElementById('galleryDetailsCategory').textContent = item.category;
+    document.getElementById('galleryDetailsDescription').textContent = item.alt;
+    const image = document.getElementById('galleryDetailsImage');
+    image.src = item.src;
+    image.alt = item.alt;
+    galleryDetailsDialog.showModal();
+    document.getElementById('closeGalleryDetails').focus();
+  };
+
+  if (galleryGrid) {
     galleryGrid.addEventListener('click', (event) => {
-      const button = event.target.closest('[data-comments-for]');
-      if (!button) return;
-      const item = galleryAssets.find((asset) => asset.id === button.dataset.commentsFor);
+      const detailsButton = event.target.closest('[data-gallery-details]');
+      if (detailsButton) {
+        const item = galleryAssets.find((asset) => asset.id === detailsButton.dataset.galleryDetails);
+        if (item) showGalleryDetails(item, detailsButton);
+        return;
+      }
+
+      const commentsButton = event.target.closest('[data-comments-for]');
+      if (!commentsButton || !commentsDialog) return;
+      const item = galleryAssets.find((asset) => asset.id === commentsButton.dataset.commentsFor);
       if (!item) return;
 
       document.getElementById('galleryCommentTitle').textContent = item.title;
@@ -218,7 +239,18 @@ document.addEventListener('DOMContentLoaded', () => {
       commentsDialog.showModal();
       loadComments(item.id);
     });
+  }
 
+  if (galleryDetailsDialog) {
+    document.getElementById('closeGalleryDetails').addEventListener('click', () => galleryDetailsDialog.close());
+    galleryDetailsDialog.addEventListener('click', (event) => {
+      if (event.target === galleryDetailsDialog) galleryDetailsDialog.close();
+    });
+    galleryDetailsDialog.addEventListener('close', () => galleryDetailsTrigger?.focus());
+    document.getElementById('galleryDetailsEnquire').addEventListener('click', () => galleryDetailsDialog.close());
+  }
+
+  if (commentsDialog) {
     document.getElementById('closeGalleryComments').addEventListener('click', () => commentsDialog.close());
     commentsDialog.addEventListener('click', (event) => {
       if (event.target === commentsDialog) commentsDialog.close();
@@ -233,7 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const submit = targetForm.querySelector('button[type="submit"]');
       const formData = new FormData(targetForm);
       submit.disabled = true;
-      note.textContent = '';
+      note.textContent = 'جار إرسال رأيك للمراجعة…';
       try {
         const response = await fetch('/api/comments', {
           method: 'POST',
@@ -245,7 +277,7 @@ document.addEventListener('DOMContentLoaded', () => {
           })
         });
         const result = await response.json();
-        if (!response.ok) throw new Error(result.error || 'تعذر إرسال التعليق.');
+        if (!response.ok) throw new Error(result.error || 'تعذر إرسال الرأي.');
         note.textContent = result.message;
         targetForm.reset();
       } catch (error) {
@@ -298,75 +330,28 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   };
 
-  const revealObserver = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('is-visible');
-          revealObserver.unobserve(entry.target);
-        }
-      });
-    },
-    { threshold: 0.15 }
-  );
-
-  revealEls.forEach((el) => {
-    const delay = Number(el.dataset.delay || 0);
-    el.style.setProperty('--delay', delay);
-    revealObserver.observe(el);
-  });
-
   renderGallery();
 
-  const animateCounter = (element) => {
-    const target = Number(element.dataset.count || 0);
-    const duration = 1100;
-    const start = performance.now();
-
-    const tick = (now) => {
-      const progress = Math.min((now - start) / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      const value = Math.floor(target * eased);
-      element.textContent = value;
-      if (progress < 1) {
-        requestAnimationFrame(tick);
-      } else {
-        element.textContent = target;
-      }
+  if (burger && nav) {
+    const setMenuOpen = (isOpen) => {
+      nav.classList.toggle('is-open', isOpen);
+      burger.setAttribute('aria-expanded', String(isOpen));
+      burger.setAttribute('aria-label', isOpen ? 'إغلاق القائمة' : 'فتح القائمة');
     };
 
-    requestAnimationFrame(tick);
-  };
-
-  counters.forEach((counter) => {
-    if (!counter.dataset.animated) {
-      counter.dataset.animated = 'true';
-      const observer = new IntersectionObserver(
-        (entries, obs) => {
-          entries.forEach((entry) => {
-            if (entry.isIntersecting) {
-              animateCounter(entry.target);
-              obs.unobserve(entry.target);
-            }
-          });
-        },
-        { threshold: 0.5 }
-      );
-      observer.observe(counter);
-    }
-  });
-
-  if (burger && nav) {
     burger.addEventListener('click', () => {
-      const isOpen = nav.classList.toggle('is-open');
-      burger.setAttribute('aria-expanded', String(isOpen));
+      setMenuOpen(burger.getAttribute('aria-expanded') !== 'true');
     });
 
     navLinks.forEach((link) => {
-      link.addEventListener('click', () => {
-        nav.classList.remove('is-open');
-        burger.setAttribute('aria-expanded', 'false');
-      });
+      link.addEventListener('click', () => setMenuOpen(false));
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && nav.classList.contains('is-open')) {
+        setMenuOpen(false);
+        burger.focus();
+      }
     });
   }
 
@@ -535,7 +520,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const toTopButton = document.getElementById('toTop');
   if (toTopButton) {
     toTopButton.addEventListener('click', () => {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
     });
   }
 
@@ -547,54 +532,52 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('load', () => {
     setHeaderState();
     setActiveNav();
-
-    if (preloader) {
-      setTimeout(() => {
-        preloader.classList.add('is-hidden');
-      }, 450);
-    }
   });
 
   if (form && formNote) {
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
-
       const name = form.querySelector('#cf-name');
       const phone = form.querySelector('#cf-phone');
       const message = form.querySelector('#cf-msg');
+      if (!name || !phone || !message) return;
 
-      if (!name || !phone || !message) {
-        formNote.textContent = 'يرجى تعبئة جميع الحقول.';
-        return;
-      }
-
-      const dataValid = name.value.trim().length >= 2 && phone.value.trim().length >= 7 && message.value.trim().length >= 5;
-
-      if (!dataValid) {
-        formNote.textContent = 'أدخل الاسم ورقم الهاتف وتفاصيل المشروع بشكل صحيح.';
+      const fields = [name, phone, message];
+      const valid = [name.value.trim().length >= 2, phone.value.trim().length >= 7, message.value.trim().length >= 5];
+      fields.forEach((field, index) => field.setAttribute('aria-invalid', String(!valid[index])));
+      if (valid.some((isValid) => !isValid)) {
+        formNote.textContent = 'راجع الاسم ورقم الهاتف وتفاصيل المشروع قبل الإرسال.';
+        fields[valid.findIndex((isValid) => !isValid)]?.focus();
         return;
       }
 
       const submit = form.querySelector('button[type="submit"]');
       submit.disabled = true;
-      formNote.textContent = 'جار إرسال طلبك...';
+      form.setAttribute('aria-busy', 'true');
+      formNote.textContent = 'جار إرسال تفاصيل مشروعك…';
       try {
         const response = await fetch('/api/orders', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: name.value.trim(), phone: phone.value.trim(), message: message.value.trim() })
         });
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.error || 'تعذر تسجيل الطلب.');
-        formNote.textContent = 'تم تسجيل طلبك بنجاح. سنتواصل معك قريبًا.';
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || 'تعذر إرسال تفاصيل المشروع.');
+        formNote.textContent = 'تم تسجيل طلبك. نراجع التفاصيل ونتواصل معك لمناقشة الخطوة التالية.';
         form.reset();
+        fields.forEach((field) => field.removeAttribute('aria-invalid'));
       } catch (error) {
         formNote.textContent = error instanceof TypeError
-          ? 'تعذر الاتصال بالخادم. حاول مرة أخرى لاحقًا.'
+          ? 'تعذر الاتصال بالورشة الآن. احتفظنا بتفاصيلك في النموذج؛ تحقق من الاتصال ثم أعد المحاولة.'
           : error.message;
       } finally {
         submit.disabled = false;
+        form.removeAttribute('aria-busy');
       }
+    });
+
+    form.querySelectorAll('input, textarea').forEach((field) => {
+      field.addEventListener('input', () => field.removeAttribute('aria-invalid'));
     });
   }
 

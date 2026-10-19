@@ -19,39 +19,48 @@ const app = express();
 const publicDir = path.join(__dirname, 'public');
 const isProduction = process.env.NODE_ENV === 'production';
 
-// بيانات administrator generales (الطلبات، التعليقات، العملاء)
-const adminEmail = (process.env.ADMIN_EMAIL || 'mtzm2225@gmail.com').trim().toLowerCase();
-const adminPassword = process.env.ADMIN_PASSWORD || '23121975@MSWood';
-const sessionSecret = process.env.SESSION_SECRET || 'MSWood_Session_Secret_2026_32PlusChars!!!';
+// بيانات الإدارة والمالك — يجب ضبطها صراحةً في متغيرات البيئة.
+const databaseUrl = (process.env.DATABASE_URL || '').trim();
+const pgHost = (process.env.PGHOST || '').trim();
+const pgDatabase = (process.env.PGDATABASE || '').trim();
+const pgUser = (process.env.PGUSER || '').trim();
+const pgPassword = process.env.PGPASSWORD || '';
+const adminEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+const adminPassword = process.env.ADMIN_PASSWORD || '';
+const sessionSecret = (process.env.SESSION_SECRET || '').trim();
+const ownerUsername = (process.env.OWNER_USERNAME || '').trim();
+const ownerPassword = process.env.OWNER_PASSWORD || '';
 
-// بيانات المالك (المالك فقط) — تُستخدم لقفل قسم "العاملين" وصلاحيات الإدارة الحساسة
-const ownerUsername = (process.env.OWNER_USERNAME || 'mtzm2225@gmail.com').trim();
-const ownerPassword = process.env.OWNER_PASSWORD || '30102006@MSWood';
-
-if (!adminEmail || adminPassword.length < 14) {
+const hasPostgresEnvironment = Boolean(pgHost && pgDatabase && pgUser && pgPassword.trim());
+if (!databaseUrl && !hasPostgresEnvironment) {
+  throw new Error('Set DATABASE_URL or PGHOST, PGDATABASE, PGUSER, and PGPASSWORD.');
+}
+if (!adminEmail || !adminPassword.trim() || adminPassword.length < 14) {
   throw new Error('Set ADMIN_EMAIL and a unique ADMIN_PASSWORD of at least 14 characters.');
 }
 if (sessionSecret.length < 32) throw new Error('SESSION_SECRET must be at least 32 characters.');
 if (!ownerUsername || ownerUsername.length < 3) {
   throw new Error('Set OWNER_USERNAME (min 3 chars) to lock the Workers/HR section.');
 }
-if (!ownerPassword || ownerPassword.length < 14) {
+if (!ownerPassword.trim() || ownerPassword.length < 14) {
   throw new Error('Set OWNER_PASSWORD (min 14 chars) to lock the Workers/HR section.');
 }
 
 // ينهي Vercel اتصال HTTPS عند الوكيل؛ نثق به حتى تعمل ملفات الجلسة الآمنة.
 if (isProduction) app.set('trust proxy', 1);
 
-let pool;
-if (process.env.DATABASE_URL) {
-  pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.PGSSL === 'true' ? { rejectUnauthorized: true } : undefined
-  });
-} else {
-  // وضع بدون قاعدة بيانات — للتجربة الفورية على Vercel
-  pool = { query: async () => ({ rows: [], rowCount: 0 }) };
-}
+const pool = new Pool({
+  ...(databaseUrl
+    ? { connectionString: databaseUrl }
+    : {
+        host: pgHost,
+        port: Number(process.env.PGPORT || 5432),
+        database: pgDatabase,
+        user: pgUser,
+        password: pgPassword
+      }),
+  ssl: process.env.PGSSL === 'true' ? { rejectUnauthorized: true } : undefined
+});
 
 const PostgreSQLStore = connectPgSimple(session);
 const adminPasswordHash = bcrypt.hashSync(adminPassword, 12);
@@ -284,8 +293,8 @@ app.use('/api', (req, res, next) => {
 
 /**
  * وسائط التصريح (Authentication Middleware)
- * requireAdmin — يحمي واجهات الإدارة العامة (طلبات، تعليقات، عملاء، مصروفات).
- * requireOwner — يحمي قسم العاملين والموظفين الحساس (HR) بحيث يفتح للمالك فقط.
+ * requireAdmin — يحمي الطلبات والتعليقات وحسابات العملاء.
+ * requireOwner — يحمي العاملين والرواتب وجميع واجهات الأموال.
  */
 function requireAdmin(req, res, next) {
   // كل واجهات لوحة الإدارة العامة محمية بجلسة administrator (طلبات، تعليقات، عملاء، مصروفات).
@@ -304,11 +313,31 @@ function requireOwner(req, res, next) {
   next();
 }
 
+function requireAdminOrOwner(req, res, next) {
+  if (req.session.adminEmail !== adminEmail && req.session.ownerUsername !== ownerUsername) {
+    return res.status(401).json({ error: 'سجّل الدخول كإدارة أو مالك لتسجيل الخروج.' });
+  }
+  next();
+}
+
 function requireCustomer(req, res, next) {
   if (!Number.isSafeInteger(req.session.customerId)) {
     return res.status(401).json({ error: 'سجّل الدخول إلى حسابك لمتابعة طلباتك.' });
   }
   next();
+}
+
+function regenerateStaffSession(req) {
+  const preserveAdmin = req.session.adminEmail === adminEmail;
+  const preserveOwner = req.session.ownerUsername === ownerUsername;
+  return new Promise((resolve, reject) => {
+    req.session.regenerate((error) => {
+      if (error) return reject(error);
+      if (preserveAdmin) req.session.adminEmail = adminEmail;
+      if (preserveOwner) req.session.ownerUsername = ownerUsername;
+      resolve();
+    });
+  });
 }
 
 function cleanText(value, maxLength) {
@@ -356,12 +385,11 @@ function validEmail(value) {
 }
 
 /**
- * واجهات المالية (Expenses / Custodies / Collections / Projects)
- * تُmounted عبر createFinanceRouter من routes/finance.js، ومحمية requireAdmin.
+ * واجهات الأموال (Custodies / Expenses / Collections / Projects) — محمية للمالك فقط.
  */
 app.use('/api/admin', createFinanceRouter({
   pool,
-  requireAdmin,
+  requireOwner,
   cleanText,
   validDate,
   validDateRange,
@@ -574,10 +602,8 @@ app.post('/api/admin/login', loginLimiter, async (req, res, next) => {
     const valid = email === adminEmail && await bcrypt.compare(password, adminPasswordHash);
     if (!valid) return res.status(401).json({ error: 'البريد أو كلمة المرور غير صحيحة.' });
 
-    // ننشئ معرّف جلسة جديدًا بعد الدخول لمنع تثبيت الجلسة.
-    await new Promise((resolve, reject) => {
-      req.session.regenerate((error) => error ? reject(error) : resolve());
-    });
+    // ندوّر معرّف الجلسة ونحتفظ بتوثيق المالك عند تسجيله مسبقًا.
+    await regenerateStaffSession(req);
     req.session.adminEmail = adminEmail;
     await new Promise((resolve, reject) => {
       req.session.save((error) => error ? reject(error) : resolve());
@@ -592,7 +618,7 @@ app.get('/api/admin/session', (req, res) => {
   res.json({ authenticated: req.session.adminEmail === adminEmail, email: req.session.adminEmail || null });
 });
 
-app.post('/api/admin/logout', requireAdmin, (req, res, next) => {
+app.post('/api/admin/logout', requireAdminOrOwner, (req, res, next) => {
   req.session.destroy((error) => {
     if (error) return next(error);
     res.clearCookie('mswood.sid', { httpOnly: true, secure: isProduction, sameSite: 'strict' });
@@ -610,9 +636,8 @@ app.post('/api/owner/login', loginLimiter, async (req, res, next) => {
     const valid = username === ownerUsername && await bcrypt.compare(password, ownerPasswordHash);
     if (!valid) return res.status(401).json({ error: 'اسم المستخدم أو كلمة المرور غير صحيحة.' });
 
-    await new Promise((resolve, reject) => {
-      req.session.regenerate((error) => error ? reject(error) : resolve());
-    });
+    // ندوّر معرّف الجلسة ونحتفظ بتوثيق الإدارة عند تسجيلها مسبقًا.
+    await regenerateStaffSession(req);
     req.session.ownerUsername = ownerUsername;
     await new Promise((resolve, reject) => {
       req.session.save((error) => error ? reject(error) : resolve());
@@ -994,7 +1019,7 @@ async function start() {
   await ensureDatabaseSchema();
 
   const port = Number(process.env.PORT || 3000);
-  const host = isProduction ? '0.0.0.0' : '127.0.0.1';
+  const host = process.env.HOST || (isProduction ? '0.0.0.0' : '127.0.0.1');
   app.listen(port, host, () => {
     console.log(`MS Woodworks is listening on http://${host}:${port}`);
   });

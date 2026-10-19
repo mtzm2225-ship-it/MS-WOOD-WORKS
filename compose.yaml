@@ -22,12 +22,19 @@ services:
         condition: service_healthy
     environment:
       NODE_ENV: ${NODE_ENV:-development}
+      HOST: 0.0.0.0
       PORT: 3000
-      DATABASE_URL: postgresql://${POSTGRES_USER:-mswood}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB:-mswood}
+      PGHOST: database
+      PGPORT: 5432
+      PGDATABASE: ${POSTGRES_DB:-mswood}
+      PGUSER: ${POSTGRES_USER:-mswood}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       PGSSL: "false"
       ADMIN_EMAIL: ${ADMIN_EMAIL:?Set ADMIN_EMAIL in .env}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env}
       SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET in .env}
+      OWNER_USERNAME: ${OWNER_USERNAME:?Set OWNER_USERNAME in .env}
+      OWNER_PASSWORD: ${OWNER_PASSWORD:?Set OWNER_PASSWORD in .env}
     ports:
       - "3000:3000"
     healthcheck:

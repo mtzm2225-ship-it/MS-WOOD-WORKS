@@ -1,7 +1,7 @@
 <!--
   public/admin.html — واجهة لوحة إدارة MS Woodworks
   الغرض: صفحة إدارية محمية لإدارة الطلبات، تعليقات الصور، حسابات العملاء، الموظفين، الحضور، الرواتب، والمصروفات.
-  يتطلب تسجيل دخول الإدارة (ADMIN_EMAIL / ADMIN_PASSWORD)، وقسم الموظفين يتطلب تسجيل دخول المالك (OWNER_USERNAME / OWNER_PASSWORD).
+  يتطلب تسجيل دخول الإدارة (ADMIN_EMAIL / ADMIN_PASSWORD)، وقسم العاملين والأموال يتطلب تسجيل دخول المالك (OWNER_USERNAME / OWNER_PASSWORD).
 -->
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="../admin.css" />
+  <link rel="stylesheet" href="../admin.css?v=ms-wood-1" />
 </head>
 <body>
   <header class="admin-header">
@@ -31,7 +31,7 @@
     <section class="login-panel" id="loginPanel" aria-labelledby="loginTitle" hidden>
       <p class="eyebrow">مساحة خاصة — الإدارة</p>
       <h1 id="loginTitle">تسجيل دخول الإدارة</h1>
-      <p class="muted">أدخل بيانات الإدارة للوصول إلى الطلبات والتعليقات وحسابات العملاء والمصروفات.</p>
+      <p class="muted">أدخل بيانات الإدارة للوصول إلى الطلبات والتعليقات وحسابات العملاء.</p>
       <form id="loginForm" class="login-form">
         <label for="adminEmail">البريد الإلكتروني</label>
         <input id="adminEmail" name="email" type="email" autocomplete="username" required />
@@ -42,11 +42,11 @@
       </form>
     </section>
 
-    <!-- تسجيل دخول المالك (لقفل قسم الموظفين / العاملين فقط) — منفصل عن تسجيل دخول الإدارة -->
+    <!-- تسجيل دخول المالك لبوابة العاملين والأموال، مستقل عن دخول الإدارة -->
     <section class="login-panel" id="ownerLoginPanel" aria-labelledby="ownerLoginTitle" hidden>
       <p class="eyebrow">مساحة خاصة — المالك فقط</p>
       <h1 id="ownerLoginTitle">تسجيل دخول المالك</h1>
-      <p class="muted">هذا القسم محجوز للمالك فقط. قسم العاملين والحضور والرواتب والسلف لا يفتح إلا باسم المستخدم وكلمة مرور المالك.</p>
+      <p class="muted">بوابة العاملين والأموال مقفولة للمالك فقط، وتشمل العمال والرواتب والمصروفات والعُهد والتحصيلات والمشاريع.</p>
       <form id="ownerLoginForm" class="login-form">
         <label for="ownerUsername">اسم المستخدم</label>
         <input id="ownerUsername" name="username" type="text" autocomplete="username" required />
@@ -63,28 +63,27 @@
         <div>
           <p class="eyebrow">مساحة العمل</p>
           <h1>لوحة الإدارة</h1>
-          <p class="muted">إدارة طلبات العملاء وتعليقات المعرض والعاملين.</p>
+<p class="muted">متابعة الطلبات ومراجعة تعليقات العملاء وإدارة حساباتهم.</p>
         </div>
         <button class="button button--quiet" id="logoutButton" type="button">تسجيل الخروج</button>
       </div>
 
-      <section class="summary-grid" aria-label="ملخص النشاط">
-        <article class="summary-item"><span>كل الطلبات</span><strong id="ordersTotal">0</strong></article>
-        <article class="summary-item"><span>طلبات جديدة</span><strong id="ordersNew">0</strong></article>
-        <article class="summary-item"><span>تعليقات تنتظر المراجعة</span><strong id="commentsPending">0</strong></article>
-        <article class="summary-item"><span>تعليقات منشورة</span><strong id="commentsApproved">0</strong></article>
+      <p class="inline-message" id="summaryMessage" role="status" aria-live="polite"></p>
+      <section class="summary-grid" aria-label="ملخص النشاط" aria-live="polite" aria-busy="true" id="adminSummary">
+        <article class="summary-item"><span>كل الطلبات</span><strong id="ordersTotal">—</strong></article>
+        <article class="summary-item summary-item--action"><span>طلبات جديدة</span><strong id="ordersNew">—</strong></article>
+        <article class="summary-item summary-item--action"><span>تعليقات تنتظر المراجعة</span><strong id="commentsPending">—</strong></article>
+        <article class="summary-item"><span>تعليقات منشورة</span><strong id="commentsApproved">—</strong></article>
       </section>
 
-      <nav class="dashboard-tabs" aria-label="أقسام الإدارة">
-        <button class="tab-button is-active" type="button" data-view="ordersView" aria-selected="true">الطلبات</button>
-        <button class="tab-button" type="button" data-view="commentsView" aria-selected="false">تعليقات الصور</button>
-        <button class="tab-button" type="button" data-view="customersView" aria-selected="false">حسابات العملاء</button>
-        <button class="tab-button" type="button" data-view="hrView" aria-selected="false">العاملون</button>
-        <button class="tab-button" type="button" data-view="expensesView" aria-selected="false">المصروفات والعُهد</button>
-        <button class="tab-button" type="button" data-view="collectionsView" aria-selected="false">تحصيلات الشغل</button>
+      <nav class="dashboard-tabs" role="tablist" aria-label="أقسام الإدارة">
+        <button id="ordersTab" class="tab-button is-active" type="button" role="tab" data-view="ordersView" aria-controls="ordersView" aria-selected="true" tabindex="0">الطلبات</button>
+        <button id="commentsTab" class="tab-button" type="button" role="tab" data-view="commentsView" aria-controls="commentsView" aria-selected="false" tabindex="-1">تعليقات الصور</button>
+        <button id="customersTab" class="tab-button" type="button" role="tab" data-view="customersView" aria-controls="customersView" aria-selected="false" tabindex="-1">حسابات العملاء</button>
+        <button id="ownerMoneyTab" class="tab-button" type="button" role="tab" data-view="ownerMoneyView" aria-controls="ownerMoneyView" aria-selected="false" tabindex="-1">العاملون والأموال</button>
       </nav>
 
-      <section class="dashboard-view" id="ordersView" aria-labelledby="ordersTitle">
+      <section class="dashboard-view" id="ordersView" role="tabpanel" aria-labelledby="ordersTab" tabindex="0">
         <div class="view-heading">
           <div><h2 id="ordersTitle">طلبات العملاء</h2><p class="muted">حدّث حالة الطلب بعد التواصل مع العميل.</p></div>
           <div class="filters">
@@ -105,7 +104,7 @@
         <div class="records-list" id="ordersList" aria-live="polite"></div>
       </section>
 
-      <section class="dashboard-view" id="commentsView" aria-labelledby="commentsTitle" hidden>
+      <section class="dashboard-view" id="commentsView" role="tabpanel" aria-labelledby="commentsTab" tabindex="0" hidden>
         <div class="view-heading">
           <div><h2 id="commentsTitle">تعليقات صور المعرض</h2><p class="muted">لن تظهر تعليقات العملاء على الموقع إلا بعد اعتمادها.</p></div>
           <label class="visually-hidden" for="commentStatusFilter">تصفية حسب حالة التعليق</label>
@@ -120,7 +119,7 @@
         <div class="records-list" id="commentsList" aria-live="polite"></div>
       </section>
 
-      <section class="dashboard-view" id="customersView" aria-labelledby="customersTitle" hidden>
+      <section class="dashboard-view" id="customersView" role="tabpanel" aria-labelledby="customersTab" tabindex="0" hidden>
         <div class="view-heading">
           <div>
             <h2 id="customersTitle">حسابات العملاء</h2>
@@ -132,7 +131,14 @@
         <div class="records-list" id="customersList" aria-live="polite"></div>
       </section>
 
-      <section class="dashboard-view" id="hrView" aria-labelledby="hrTitle" hidden>
+      <section class="dashboard-view" id="ownerMoneyView" role="tabpanel" aria-labelledby="ownerMoneyTab" tabindex="0" aria-label="بوابة العاملين والأموال" hidden>
+        <nav class="dashboard-tabs owner-money-tabs" role="tablist" aria-label="أقسام العاملين والأموال">
+          <button id="hrTab" class="tab-button is-active" type="button" role="tab" data-owner-money-view="hrView" aria-controls="hrView" aria-selected="true" tabindex="0">العاملون والرواتب</button>
+          <button id="expensesTab" class="tab-button" type="button" role="tab" data-owner-money-view="expensesView" aria-controls="expensesView" aria-selected="false" tabindex="-1">المصروفات والعُهد</button>
+          <button id="collectionsTab" class="tab-button" type="button" role="tab" data-owner-money-view="collectionsView" aria-controls="collectionsView" aria-selected="false" tabindex="-1">التحصيلات والمشاريع</button>
+        </nav>
+
+        <section class="dashboard-view owner-money-view" id="hrView" role="tabpanel" aria-labelledby="hrTab" tabindex="0" hidden>
         <div class="page-heading hr-heading">
           <div>
             <p class="eyebrow">إدارة شؤون العاملين</p>
@@ -144,20 +150,20 @@
           </label>
         </div>
         <section class="summary-grid hr-summary" aria-label="ملخص شؤون العاملين">
-          <article class="summary-item"><span>الفئات</span><strong id="hrCategoryCount">0</strong></article>
-          <article class="summary-item"><span>العاملون النشطون</span><strong id="hrWorkerCount">0</strong></article>
-          <article class="summary-item"><span>إجمالي السُلف هذا الشهر</span><strong id="hrAdvancesTotal">0 ج.م</strong></article>
-          <article class="summary-item"><span>صافي الرواتب بعد السُلف</span><strong id="hrNetTotal">0 ج.م</strong></article>
+<article class="summary-item"><span>الفئات</span><strong id="hrCategoryCount">—</strong></article>
+          <article class="summary-item"><span>العاملون النشطون</span><strong id="hrWorkerCount">—</strong></article>
+          <article class="summary-item"><span>إجمالي السُلف هذا الشهر</span><strong id="hrAdvancesTotal">—</strong></article>
+          <article class="summary-item"><span>صافي الرواتب بعد السُلف</span><strong id="hrNetTotal">—</strong></article>
         </section>
 
-        <nav class="dashboard-tabs hr-tabs" aria-label="أقسام شؤون العاملين">
-          <button class="tab-button is-active" type="button" data-hr-view="workersView" aria-selected="true">العمال والفئات</button>
-          <button class="tab-button" type="button" data-hr-view="attendanceView" aria-selected="false">الحضور والانصراف</button>
-          <button class="tab-button" type="button" data-hr-view="advancesView" aria-selected="false">السُلف</button>
-          <button class="tab-button" type="button" data-hr-view="payrollView" aria-selected="false">كشف الرواتب</button>
+        <nav class="dashboard-tabs hr-tabs" role="tablist" aria-label="أقسام شؤون العاملين">
+          <button id="workersTab" class="tab-button is-active" type="button" role="tab" data-hr-view="workersView" aria-controls="workersView" aria-selected="true" tabindex="0">العمال والفئات</button>
+          <button id="attendanceTab" class="tab-button" type="button" role="tab" data-hr-view="attendanceView" aria-controls="attendanceView" aria-selected="false" tabindex="-1">الحضور والانصراف</button>
+          <button id="advancesTab" class="tab-button" type="button" role="tab" data-hr-view="advancesView" aria-controls="advancesView" aria-selected="false" tabindex="-1">السُلف</button>
+          <button id="payrollTab" class="tab-button" type="button" role="tab" data-hr-view="payrollView" aria-controls="payrollView" aria-selected="false" tabindex="-1">كشف الرواتب</button>
         </nav>
 
-        <section class="hr-subview" id="workersView">
+        <section class="hr-subview" id="workersView" role="tabpanel" aria-labelledby="workersTab" tabindex="0">
           <div class="hr-management-grid">
             <section class="hr-panel" aria-labelledby="categoriesTitle">
               <h3 id="categoriesTitle">فئات العمل</h3>
@@ -205,7 +211,7 @@
           </section>
         </section>
 
-        <section class="hr-subview" id="attendanceView" hidden>
+        <section class="hr-subview" id="attendanceView" role="tabpanel" aria-labelledby="attendanceTab" tabindex="0" hidden>
           <section class="hr-panel">
             <div class="view-heading">
               <div><h3>تسجيل حضور أو انصراف</h3><p class="muted">يمكن تحديث سجل العامل نفسه في اليوم ذاته.</p></div>
@@ -229,7 +235,7 @@
           </section>
         </section>
 
-        <section class="hr-subview" id="advancesView" hidden>
+        <section class="hr-subview" id="advancesView" role="tabpanel" aria-labelledby="advancesTab" tabindex="0" hidden>
           <section class="hr-panel">
             <h3>تسجيل سُلفة</h3>
             <p class="muted">تُسجل السلفة على العامل وتُخصم من كشف راتب الشهر الذي صُرفت فيه.</p>
@@ -248,7 +254,7 @@
           </section>
         </section>
 
-        <section class="hr-subview" id="payrollView" hidden>
+        <section class="hr-subview" id="payrollView" role="tabpanel" aria-labelledby="payrollTab" tabindex="0" hidden>
           <section class="hr-panel">
             <h3>كشف الرواتب الشهري</h3>
             <p class="muted">صافي المستحق = الراتب الشهري الثابت − سُلف الشهر. الحضور مسجل للمتابعة ولا يخصم تلقائيًا.</p>
@@ -263,7 +269,7 @@
         </section>
       </section>
 
-      <section class="dashboard-view" id="expensesView" aria-labelledby="expensesTitle" hidden>
+        <section class="dashboard-view owner-money-view" id="expensesView" role="tabpanel" aria-labelledby="expensesTab" tabindex="0" hidden>
           <div class="page-heading hr-heading">
             <div>
               <p class="eyebrow">الحسابات اليومية</p>
@@ -283,10 +289,10 @@
           <p class="inline-message" id="expensesMessage" role="status"></p>
 
           <section class="summary-grid hr-summary expense-summary" aria-label="ملخص المصروفات والعُهد">
-            <article class="summary-item"><span>إجمالي المصروفات</span><strong id="expensesTotal">0 ج.م</strong></article>
-            <article class="summary-item"><span>مصروفات من العُهد</span><strong id="custodyExpensesTotal">0 ج.م</strong></article>
-            <article class="summary-item"><span>مصروفات مباشرة خارج العُهد</span><strong id="directExpensesTotal">0 ج.م</strong></article>
-            <article class="summary-item"><span>الرصيد المتبقي في العُهد</span><strong id="custodyBalanceTotal">0 ج.م</strong></article>
+<article class="summary-item"><span>إجمالي المصروفات</span><strong id="expensesTotal">—</strong></article>
+            <article class="summary-item"><span>مصروفات من العُهد</span><strong id="custodyExpensesTotal">—</strong></article>
+            <article class="summary-item"><span>مصروفات مباشرة خارج العُهد</span><strong id="directExpensesTotal">—</strong></article>
+            <article class="summary-item"><span>الرصيد المتبقي في العُهد</span><strong id="custodyBalanceTotal">—</strong></article>
           </section>
 
           <div class="hr-management-grid expense-forms">
@@ -398,7 +404,7 @@
           </section>
         </section>
 
-        <section class="dashboard-view" id="collectionsView" aria-labelledby="collectionsTitle" hidden>
+        <section class="dashboard-view owner-money-view" id="collectionsView" role="tabpanel" aria-labelledby="collectionsTab" tabindex="0" hidden>
           <div class="page-heading hr-heading">
             <div>
               <p class="eyebrow">إيرادات الشغل</p>
@@ -418,10 +424,10 @@
           <p class="inline-message" id="collectionsMessage" role="status"></p>
 
           <section class="summary-grid hr-summary expense-summary" aria-label="ملخص التحصيلات">
-            <article class="summary-item"><span>إجمالي التحصيل في الفترة</span><strong id="collectionsTotal">0 ج.م</strong></article>
-            <article class="summary-item"><span>دفعات المشاريع</span><strong id="projectCollectionsTotal">0 ج.م</strong></article>
-            <article class="summary-item"><span>تحصيلات الطلبات</span><strong id="orderCollectionsTotal">0 ج.م</strong></article>
-            <article class="summary-item"><span>إيرادات عامة غير مرتبطة</span><strong id="generalCollectionsTotal">0 ج.م</strong></article>
+<article class="summary-item"><span>إجمالي التحصيل في الفترة</span><strong id="collectionsTotal">—</strong></article>
+            <article class="summary-item"><span>دفعات المشاريع</span><strong id="projectCollectionsTotal">—</strong></article>
+            <article class="summary-item"><span>تحصيلات الطلبات</span><strong id="orderCollectionsTotal">—</strong></article>
+            <article class="summary-item"><span>إيرادات عامة غير مرتبطة</span><strong id="generalCollectionsTotal">—</strong></article>
           </section>
 
           <div class="hr-management-grid collection-forms">

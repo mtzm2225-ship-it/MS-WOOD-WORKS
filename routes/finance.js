@@ -1,16 +1,16 @@
 /**
  * routes/finance.js — مسار المصروفات والعُهد والتحصيلات (MS Woodworks)
  * الغرض: توفير واجهات API لإدارة العُهد النقدية، الحركات المرتبطة بها، المصروفات (عهد / مباشرة)،
- * المشاريع، والتحصيلات المالية. يستخدم requireOwner للمسارات الحساسة (العاملين، الرواتب) في server.js.
+ * المشاريع والتحصيلات المالية. جميع هذه المسارات تتطلب مصادقة المالك.
  */
 const express = require('express');
 
 const paymentMethods = ['cash', 'transfer', 'card', 'wallet', 'other'];
 
-function createFinanceRouter({ pool, requireAdmin, cleanText, validDate, validDateRange, validRecordId, validCurrencyAmount }) {
+function createFinanceRouter({ pool, requireOwner, cleanText, validDate, validDateRange, validRecordId, validCurrencyAmount }) {
   const router = express.Router();
 
-  router.get('/custodies', requireAdmin, async (req, res, next) => {
+  router.get('/custodies', requireOwner, async (req, res, next) => {
     try {
       const result = await pool.query(
         `SELECT id, holder_name, balance, active, created_at
@@ -25,7 +25,7 @@ function createFinanceRouter({ pool, requireAdmin, cleanText, validDate, validDa
     }
   });
 
-  router.post('/custodies', requireAdmin, async (req, res, next) => {
+  router.post('/custodies', requireOwner, async (req, res, next) => {
     try {
       const holderName = cleanText(req.body.holderName, 100);
       const amount = req.body.amount;
@@ -54,7 +54,7 @@ function createFinanceRouter({ pool, requireAdmin, cleanText, validDate, validDa
     }
   });
 
-  router.post('/custodies/:id/movements', requireAdmin, async (req, res, next) => {
+  router.post('/custodies/:id/movements', requireOwner, async (req, res, next) => {
     try {
       if (!validRecordId(req.params.id)) return res.status(400).json({ error: 'معرّف العُهدة غير صالح.' });
       const movementType = cleanText(req.body.type, 10);
@@ -99,7 +99,7 @@ function createFinanceRouter({ pool, requireAdmin, cleanText, validDate, validDa
     }
   });
 
-  router.get('/expenses', requireAdmin, async (req, res, next) => {
+  router.get('/expenses', requireOwner, async (req, res, next) => {
     try {
       const from = req.query.from;
       const to = req.query.to;
@@ -168,7 +168,7 @@ function createFinanceRouter({ pool, requireAdmin, cleanText, validDate, validDa
     }
   });
 
-  router.post('/expenses', requireAdmin, async (req, res, next) => {
+  router.post('/expenses', requireOwner, async (req, res, next) => {
     try {
       const expenseDate = req.body.date;
       const source = cleanText(req.body.source, 10);
@@ -240,7 +240,7 @@ function createFinanceRouter({ pool, requireAdmin, cleanText, validDate, validDa
     }
   });
 
-  router.get('/collections', requireAdmin, async (req, res, next) => {
+  router.get('/collections', requireOwner, async (req, res, next) => {
     try {
       const from = req.query.from;
       const to = req.query.to;
@@ -310,7 +310,7 @@ function createFinanceRouter({ pool, requireAdmin, cleanText, validDate, validDa
     }
   });
 
-  router.post('/projects', requireAdmin, async (req, res, next) => {
+  router.post('/projects', requireOwner, async (req, res, next) => {
     try {
       const orderId = Number(req.body.orderId);
       const name = cleanText(req.body.name, 200);
@@ -336,7 +336,7 @@ function createFinanceRouter({ pool, requireAdmin, cleanText, validDate, validDa
     }
   });
 
-  router.patch('/projects/:id', requireAdmin, async (req, res, next) => {
+  router.patch('/projects/:id', requireOwner, async (req, res, next) => {
     try {
       if (!validRecordId(req.params.id)) return res.status(400).json({ error: 'معرّف المشروع غير صالح.' });
       const name = cleanText(req.body.name, 200);
@@ -357,7 +357,7 @@ function createFinanceRouter({ pool, requireAdmin, cleanText, validDate, validDa
     }
   });
 
-  router.post('/collections', requireAdmin, async (req, res, next) => {
+  router.post('/collections', requireOwner, async (req, res, next) => {
     try {
       const receiptDate = req.body.date;
       const receiptType = cleanText(req.body.type, 10);

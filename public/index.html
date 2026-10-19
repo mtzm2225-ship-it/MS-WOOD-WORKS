@@ -8,16 +8,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MS Woodworks — تُصنع لتدوم، صَنعنا فتميزنا</title>
-  <meta name="description" content="أثاث خشبي مخصص من MS Woodworks — تصميم مدروس، خامات مختارة، وتشطيب حرفي يليق بمساحتك." />
+  <title>MS Woodworks — أثاث خشبي حسب الطلب</title>
+  <meta name="description" content="أثاث خشبي حسب المقاس للمنزل والمكتب. استكشف نماذج التصميم وأرسل تفاصيل مشروعك إلى ورشة MS Woodworks." />
   <meta name="author" content="Mohamed Ismail" />
   <meta name="theme-color" content="#1E1B18" />
 
   <!-- Open Graph -->
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="MS Woodworks — تُصنع لتدوم، صَنعنا فتميزنا" />
-  <meta property="og:description" content="أثاث خشبي فاخر ومخصص يدويًا، مع شغف الحِرفة والاهتمام بالتفاصيل." />
-  <meta property="og:image" content="img/MS Woodworks_ Crafted in Warmth.png" />
+  <meta property="og:title" content="MS Woodworks — أثاث خشبي حسب الطلب" />
+  <meta property="og:description" content="استكشف نماذج تصميم الأثاث الخشبي وأرسل تفاصيل مشروعك إلى الورشة." />
+  <meta property="og:image" content="img/MS%20Woodworks_%20Crafted%20in%20Warmth.png" />
 
   <link rel="icon" type="image/jpeg" href="img/Gemini_Generated_Image_rm6yb4rm6yb4rm6y.jpeg" />
   <link rel="apple-touch-icon" href="img/Gemini_Generated_Image_rm6yb4rm6yb4rm6y.jpeg" />
@@ -27,7 +27,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Playfair+Display:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="ms.css" />
+  <link rel="stylesheet" href="ms.css?v=ms-wood-1" />
 </head>
 <body>
 
@@ -55,11 +55,11 @@
           <li><a href="#services" class="nav__link">الخدمات</a></li>
           <li><a href="#gallery" class="nav__link">المعرض</a></li>
           <li><a href="#workshop" class="nav__link">الورشة</a></li>
-          <li><a href="#about" class="nav__link">من نحن</a></li>
+          <li><a href="#workshop" class="nav__link">من نحن</a></li>
           <li><a href="#contact" class="nav__link">تواصل</a></li>
           <li><button class="nav__link nav__login" id="customerAccountOpen" type="button">دخول العملاء</button></li>
         </ul>
-        <a href="#contact" class="btn btn--gold nav__cta">اطلب عرض سعر مخصص</a>
+        <a href="#contact" class="btn btn--gold nav__cta">أرسل تفاصيل مشروعك</a>
       </nav>
 
       <!-- Mobile toggle -->
@@ -81,8 +81,8 @@
     <div class="container hero__inner">
       <div class="hero__content">
         <p class="hero__eyebrow reveal">
-          <span class="hero__eyebrow-line"></span>
-          مؤسسة محمد إسماعيل و أولاده للحِرفية الخشبية
+          <span class="hero__eyebrow-line" aria-hidden="true"></span>
+          ورشة محمد إسماعيل وأولاده للأعمال الخشبية
         </p>
 
         <h1 class="hero__title reveal" data-delay="1">
@@ -90,52 +90,113 @@
           <span class="hero__title-ar">تُصنع لتدوم،<br><em>صَنعنا فتميزنا</em></span>
         </h1>
 
-        <p class="hero__lead reveal" data-delay="2">
-          أثاث خشبي فاخر ومخصص يدويًا، من الجوز الداكن، مصمم ليخلق جوًا أنيقًا ودائمًا
-          في المنزل أو المكتب. نُنجز كل قطعة بعناية، من الفكرة إلى التشطيب النهائي.
+        <p class="hero__lead">
+          أثاث خشبي حسب الطلب للمنزل والمكتب. نبدأ بمساحتك وفكرتك، ثم نناقش المقاس والخامة والتشطيب المناسب.
         </p>
 
-        <div class="hero__actions reveal" data-delay="3">
-          <a href="#gallery" class="btn btn--gold btn--lg">استكشف المجموعة</a>
-          <a href="#contact" class="btn btn--ghost btn--lg">اطلب تصميمًا خاصًا</a>
+        <div class="hero__actions">
+          <a href="#gallery" class="btn btn--gold btn--lg">استكشف النماذج</a>
+          <a href="#contact" class="btn btn--ghost btn--lg">أرسل تفاصيل مشروعك</a>
         </div>
 
-        <ul class="hero__stats reveal" data-delay="4">
-          <li><strong data-count="25">0</strong><span>عامًا من الخبرة</span></li>
-          <li><strong data-count="480">0</strong><span>قطعة مُسلَّمة</span></li>
-          <li><strong data-count="100">0</strong><span>% صناعة يدوية</span></li>
+        <ul class="hero__proof" aria-label="ما نقدمه">
+          <li>تصميم حسب الطلب</li>
+          <li>اختيار الخامة بعناية</li>
+          <li>تنفيذ وتشطيب حرفي</li>
         </ul>
       </div>
     </div>
 
-    <a href="#craft" class="hero__scroll" aria-label="مرر للأسفل">
+          <a href="#services" class="hero__scroll" aria-label="انتقل إلى الخدمات">
       <span></span>
     </a>
   </section>
 
-  <!-- ══════════ MARQUEE STRIP ══════════ -->
-  <div class="strip" aria-hidden="true">
-    <div class="strip__track">
-      <span>JUGLANS REGIA — DARK WALNUT</span><span class="strip__dot">◆</span>
-      <span>HAND-CARVED JOINERY</span><span class="strip__dot">◆</span>
-      <span>BESPOKE EXECUTIVE FURNITURE</span><span class="strip__dot">◆</span>
-      <span>OIL-FINISHED · TIMELESS DESIGN</span><span class="strip__dot">◆</span>
-      <span>JUGLANS REGIA — DARK WALNUT</span><span class="strip__dot">◆</span>
-      <span>HAND-CARVED JOINERY</span><span class="strip__dot">◆</span>
-      <span>BESPOKE EXECUTIVE FURNITURE</span><span class="strip__dot">◆</span>
-      <span>OIL-FINISHED · TIMELESS DESIGN</span><span class="strip__dot">◆</span>
+  <div class="strip" aria-label="خدمات MS Woodworks">
+    <div class="container strip__track">
+      <span>تصميم حسب الطلب</span><span class="strip__dot" aria-hidden="true">◆</span>
+      <span>اختيار الخشب والتشطيب</span><span class="strip__dot" aria-hidden="true">◆</span>
+      <span>تنفيذ الأثاث حسب المقاس</span><span class="strip__dot" aria-hidden="true">◆</span>
+      <span>تواصل مباشر مع الورشة</span>
     </div>
   </div>
+
+  <!-- Start with the available woodwork, then explain the process. -->
+  <section class="services section" id="services">
+    <div class="container">
+      <header class="section-head">
+        <p class="section-tag">ما يمكن تنفيذه</p>
+        <h2 class="section-title">أثاث وخدمات <em>حسب احتياج مساحتك</em></h2>
+        <p class="section-sub">شاركنا الفكرة والمقاس التقريبي، وسنناقش معك طريقة التنفيذ والخامة المناسبة.</p>
+      </header>
+      <ul class="services__list">
+        <li><span>أثاث حسب الطلب</span><p>مكاتب وطاولات ووحدات تخزين تُصمم وفق مساحة المكان.</p></li>
+        <li><span>تجهيز وتركيب</span><p>تنفيذ القطع وتجهيزها لتنسجم مع تفاصيل المنزل أو المكتب.</p></li>
+        <li><span>تجديد وتشطيب</span><p>معالجة وتجديد الأسطح الخشبية والعناية بتشطيبها.</p></li>
+        <li><span>حلول خشبية للمساحات</span><p>أفكار متكاملة للأرفف والتخزين والديكور الخشبي.</p></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="gallery section" id="gallery">
+    <div class="container">
+      <header class="gallery__header">
+        <div>
+          <p class="section-tag">نماذج تصميمية</p>
+          <h2 class="section-title">استكشف <em>تفاصيل الخشب</em></h2>
+        </div>
+        <p class="section-sub">هذه الصور تصوّرات تصميمية للهوية والمنتجات؛ تحدّث معنا عن تنفيذ قطعة تناسب مساحتك.</p>
+      </header>
+      <div class="gallery__grid" id="galleryGrid" aria-label="نماذج من أعمال MS Woodworks"></div>
+      <div class="gallery__cta">
+        <a href="#contact" class="btn btn--dark btn--lg">أرسل تفاصيل مشروعك</a>
+      </div>
+      <section class="customer-reviews" aria-labelledby="customerReviewsTitle">
+        <header class="customer-reviews__head">
+          <div>
+            <p class="section-tag">آراء منشورة بعد المراجعة</p>
+            <h3 id="customerReviewsTitle">تعليقات <em>على النماذج</em></h3>
+          </div>
+          <p>الصور المعروضة تصوّرات تصميمية، وتُنشر التعليقات بعد مراجعتها.</p>
+        </header>
+        <div class="customer-reviews__grid" id="customerReviews" aria-live="polite" aria-busy="true">
+          <p class="customer-reviews__empty">جار تحميل الآراء…</p>
+        </div>
+        <form class="customer-reviews__form" id="customerReviewForm">
+          <div class="customer-reviews__form-copy">
+            <h4>شاركنا رأيك</h4>
+            <p>اختر النموذج الأقرب لتجربتك؛ سيظهر رأيك بعد المراجعة.</p>
+          </div>
+          <div class="review-field">
+            <label for="reviewProject">النموذج</label>
+            <select id="reviewProject" name="galleryId" required>
+              <option value="" selected disabled>اختر النموذج</option>
+            </select>
+          </div>
+          <div class="review-field">
+            <label for="reviewName">الاسم</label>
+            <input id="reviewName" name="name" type="text" minlength="2" maxlength="80" autocomplete="name" required />
+          </div>
+          <div class="review-field review-field--wide">
+            <label for="reviewBody">الرأي</label>
+            <textarea id="reviewBody" name="body" rows="3" minlength="3" maxlength="800" required></textarea>
+          </div>
+          <button class="btn btn--gold" type="submit">إرسال الرأي للمراجعة</button>
+          <p class="customer-reviews__note" id="customerReviewNote" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+    </div>
+  </section>
 
   <section class="craft section" id="craft">
     <div class="container">
       <header class="craft__header">
         <div class="craft__heading reveal">
           <p class="section-tag">فلسفة الصنعة</p>
-          <h2 class="section-title">من الخشب الخام <em>إلى قطعة تعيش</em></h2>
+          <h2 class="section-title">الفكرة والخامة <em>ثم قطعة تناسبك</em></h2>
         </div>
         <p class="craft__intro reveal" data-delay="1">
-          لكل قطعة حكاية تبدأ من اختيار الخشب، وتكتمل بلمسات حرفية تصنع أثاثًا يشبهك ويظل جزءًا من بيتك لسنوات.
+          نبدأ بسماع احتياجك ومساحة المكان، ثم نناقش المقاس والخامة والتشطيب قبل التنفيذ.
         </p>
       </header>
 
@@ -196,50 +257,15 @@
     </div>
   </section>
 
-  <!-- ══════════ SERVICES ══════════ -->
-  <section class="services section" id="services">
-    <div class="container">
-      <header class="section-head">
-        <p class="section-tag reveal">خدماتنا</p>
-        <h2 class="section-title reveal" data-delay="1">تصميم وتنفيذ <em>بخبرة حقيقية</em></h2>
-      </header>
-
-      <div class="services__grid">
-        <article class="service-card reveal" data-delay="1">
-          <div class="service-card__icon">01</div>
-          <h3>أثاث مخصص</h3>
-          <p>مكاتب تنفيذية، كنب، أرفف، طاولات، ومفروشات خشبية مصممة حسب المقاس وأسلوب مساحة العميل.</p>
-        </article>
-
-        <article class="service-card reveal" data-delay="2">
-          <div class="service-card__icon">02</div>
-          <h3>تركيب وتجهيز</h3>
-          <p>تجهيز المساحات المكتبية والمنزلية مع التركيب الدقيق والتأكد من التناسق النهائي مع الديكور.</p>
-        </article>
-
-        <article class="service-card reveal" data-delay="3">
-          <div class="service-card__icon">03</div>
-          <h3>تجديد وتشطيب</h3>
-          <p>إعادة تلميع، معالجة، وتنفيذ تشطيبات متقدمة للحفاظ على جمال الخشب وسلامة الواجهة الخشبية.</p>
-        </article>
-
-        <article class="service-card reveal" data-delay="4">
-          <div class="service-card__icon">04</div>
-          <h3>تصميم داخلي</h3>
-          <p>حلول خشبية متكاملة تمنح المساحة شخصية أنيقة، دافئة، ومتماشية مع أسلوب العميل من دون إفراط.</p>
-        </article>
-      </div>
-    </div>
-  </section>
 
   <!-- ══════════ WHY US ══════════ -->
   <section class="values section">
     <div class="container values__inner">
       <div class="values__content">
-        <p class="section-tag reveal">لماذا نحن</p>
-        <h2 class="section-title reveal" data-delay="1">وعودنا هي <em>الجودة والالتزام</em></h2>
-        <p class="reveal" data-delay="2">
-          كل قطعة نُنتجها تُصنع بعناية متواصلة، حيث نختار الخشب المناسب، نراجع التفاصيل، ونصل إلى تشطيب يليق برغبة العميل ويمتد عبر الزمن.
+        <p class="section-tag">أسلوب العمل</p>
+        <h2 class="section-title">القرار يبدأ من <em>تفاصيل مساحتك</em></h2>
+        <p>
+          نناقش الاستخدام والمقاس المتاحين، ونوضح خيارات الخامة والتشطيب قبل تحديد طريقة التنفيذ.
         </p>
       </div>
 
@@ -247,8 +273,8 @@
         <div class="value-item reveal" data-delay="1">
           <span>✓</span>
           <div>
-            <h3>خشب معتمد</h3>
-            <p>نستخدم خامات أصلية وتدقيقًا دقيقًا في جودة الخشب قبل التنفيذ.</p>
+            <h3>اختيار الخامة</h3>
+            <p>نناقش نوع الخشب ومظهره بما يناسب القطعة ومساحة الاستخدام.</p>
           </div>
         </div>
 
@@ -263,62 +289,28 @@
         <div class="value-item reveal" data-delay="3">
           <span>✓</span>
           <div>
-            <h3>دقة التنفيذ</h3>
-            <p>نؤكد على جودة الوصلات، الدقة في الزوايا، واللمسة النهائية قبل التسليم.</p>
+            <h3>مراجعة التفاصيل</h3>
+            <p>نراجع المقاس والتشطيب المتفق عليهما قبل تجهيز القطعة للتسليم.</p>
           </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ══════════ GALLERY / SHOWROOM ══════════ -->
-  <section class="gallery section" id="gallery">
-    <div class="container">
 
-      <header class="section-head section-head--center">
-        <p class="section-tag reveal">المعرض</p>
-        <h2 class="section-title reveal" data-delay="1">مختارات من <em>عالم الخشب</em></h2>
-        <p class="section-sub reveal" data-delay="2">
-          تصفّح نماذج من تصاميمنا الخشبية، واختر الصورة الأقرب لفكرتك لتشاركنا رأيك.
-        </p>
-      </header>
 
-      <div class="gallery__grid" id="galleryGrid"></div>
-
-      <div class="gallery__cta reveal">
-        <a href="#contact" class="btn btn--dark btn--lg">لديك فكرة؟ لنصنعها معًا</a>
+  <dialog class="gallery-details" id="galleryDetails" aria-labelledby="galleryDetailsTitle">
+    <div class="gallery-details__inner">
+      <button class="gallery-comments__close" id="closeGalleryDetails" type="button" aria-label="إغلاق تفاصيل النموذج">×</button>
+      <img class="gallery-details__image" id="galleryDetailsImage" src="" alt="" />
+      <div class="gallery-details__copy">
+        <p class="section-tag" id="galleryDetailsCategory"></p>
+        <h2 id="galleryDetailsTitle"></h2>
+        <p id="galleryDetailsDescription"></p>
+        <a href="#contact" class="btn btn--gold" id="galleryDetailsEnquire">ناقش نموذجًا مشابهًا</a>
       </div>
-
-      <section class="customer-reviews" aria-labelledby="customerReviewsTitle">
-        <header class="customer-reviews__head">
-          <div>
-            <p class="section-tag">تجارب حقيقية</p>
-            <h3 id="customerReviewsTitle">آراء <em>عملائنا</em></h3>
-          </div>
-          <p>نشارك هنا الآراء التي أرسلها عملاؤنا ووافقوا على نشرها.</p>
-        </header>
-        <div class="customer-reviews__grid" id="customerReviews" aria-live="polite">
-          <p class="customer-reviews__empty">جار تحميل آراء العملاء...</p>
-        </div>
-        <form class="customer-reviews__form" id="customerReviewForm">
-          <div class="customer-reviews__form-copy">
-            <h4>شارِكنا تجربتك</h4>
-            <p>أرسل رأيك عن أحد الأعمال. سيظهر بعد مراجعته من فريقنا.</p>
-          </div>
-          <label for="reviewProject">العمل</label>
-          <select id="reviewProject" name="galleryId" required>
-            <option value="" selected disabled>اختر العمل الذي تريد التعليق عليه</option>
-          </select>
-          <label for="reviewName">اسمك</label>
-          <input id="reviewName" name="name" type="text" minlength="2" maxlength="80" autocomplete="name" required />
-          <label for="reviewBody">رأيك</label>
-          <textarea id="reviewBody" name="body" rows="3" minlength="3" maxlength="800" required></textarea>
-          <button class="btn btn--gold" type="submit">إرسال رأيي للمراجعة</button>
-          <p class="customer-reviews__note" id="customerReviewNote" role="status" aria-live="polite"></p>
-        </form>
-      </section>
     </div>
-  </section>
+  </dialog>
 
   <dialog class="gallery-comments" id="galleryComments" aria-labelledby="galleryCommentTitle">
     <div class="gallery-comments__inner">
@@ -326,7 +318,7 @@
       <div class="gallery-comments__head">
         <img id="galleryCommentImage" src="" alt="" />
         <div>
-          <p class="section-tag">آراء العملاء</p>
+          <p class="section-tag">تعليقات على النموذج</p>
           <h2 id="galleryCommentTitle"></h2>
         </div>
       </div>
@@ -350,13 +342,13 @@
       <div class="workshop__media reveal">
         <img src="img/WhatsApp Image 2026-10-12 at 11.46.47 AM.jpeg" alt="مكتب تنفيذي خشبي داخل مساحة عمل أنيقة" loading="lazy" />
         <div class="workshop__stamp">
-          <span class="workshop__stamp-num">2001</span>
-          <span class="workshop__stamp-txt">منذ</span>
+          <span class="workshop__stamp-num">MS</span>
+          <span class="workshop__stamp-txt">حسب الطلب</span>
         </div>
       </div>
 
-      <div class="workshop__body">
-        <p class="section-tag reveal">من نحن</p>
+      <div class="workshop__body" id="about">
+        <p class="section-tag">من نحن</p>
         <h2 class="section-title reveal" data-delay="1">ورشة صغيرة،<br><em>ومعايير لا تُساوم</em></h2>
 
         <p class="reveal" data-delay="2">
@@ -371,10 +363,10 @@
         </p>
 
         <ul class="workshop__list">
-          <li class="reveal" data-delay="3"><span class="tick">✓</span> خشب صلب 100% — جوز داكن وبلوط</li>
-          <li class="reveal" data-delay="3"><span class="tick">✓</span> تنفيذ حسب المقاس لمساحاتك</li>
-          <li class="reveal" data-delay="3"><span class="tick">✓</span> تشطيب يدوي بزيوت طبيعية آمنة</li>
-          <li class="reveal" data-delay="3"><span class="tick">✓</span> ضمان على الصنعة وخدمة ما بعد التسليم</li>
+          <li><span class="tick" aria-hidden="true">✓</span> نناقش الخامة المناسبة لكل فكرة</li>
+          <li><span class="tick" aria-hidden="true">✓</span> تنفيذ حسب المقاس ومساحة المكان</li>
+          <li><span class="tick" aria-hidden="true">✓</span> اختيار لون وتشطيب مناسبين للخشب</li>
+          <li><span class="tick" aria-hidden="true">✓</span> مراجعة تفاصيل القطعة قبل التسليم</li>
         </ul>
 
         <a href="#contact" class="btn btn--gold reveal" data-delay="4">تحدّث إلى الحرفي</a>
@@ -383,24 +375,6 @@
     </div>
   </section>
 
-  <!-- ══════════ TESTIMONIAL / QUOTE ══════════ -->
-  <section class="quote section">
-    <div class="container">
-      <blockquote class="quote__box reveal">
-        <span class="quote__mark">”</span>
-        <p>
-          الخشب الجيد لا يهرم، بل يكتسب حكاية.
-        </p>
-        <footer class="quote__author">
-          <span class="quote__avatar" aria-hidden="true">MS</span>
-          <span>
-            <strong>محمد إسماعيل</strong>
-            <small>المؤسس والحرفي الرئيسي</small>
-          </span>
-        </footer>
-      </blockquote>
-    </div>
-  </section>
 
   <!-- ══════════ FACEBOOK / SOCIAL PROOF ══════════ -->
   <section class="social section" id="social">
@@ -443,41 +417,19 @@
     </div>
   </section>
 
-  <!-- ══════════ CTA BANNER ══════════ -->
-  <section class="cta">
-    <div class="container cta__inner">
-      <div class="cta__text reveal">
-        <h2>جاهز لقطعة تُصنع من أجلك وحدك؟</h2>
-        <p>شاركنا المساحة، الفكرة، وذوقك — ونحن نتولى الباقي من اختيار الخشب حتى التسليم.</p>
-      </div>
-      <div class="cta__actions reveal" data-delay="1">
-        <a href="#contact" class="btn btn--gold btn--lg">اطلب عرض سعر مخصص</a>
-        <a href="#gallery" class="btn btn--ghost-light btn--lg">تصفح المعرض</a>
-      </div>
-    </div>
-  </section>
 
-  <!-- ══════════ ABOUT / CONTACT ══════════ -->
-  <section class="about section" id="about">
-    <div class="container about__inner">
+  <!-- Contact / custom project request -->
+  <section class="contact-section section">
+    <div class="container contact-section__inner">
+      <header class="contact-section__intro">
+        <p class="section-tag">تواصل مع الورشة</p>
+        <h2 class="section-title">أرسل تفاصيل <em>مشروعك</em></h2>
+        <p class="section-sub">اكتب نوع القطعة والمقاس التقريبي والمكان إن كانت التفاصيل متاحة؛ نراجع الطلب ثم نتواصل لمناقشة الخطوة التالية.</p>
+      </header>
 
-      <div class="about__body">
-        <p class="section-tag reveal">العلامة</p>
-        <h2 class="section-title reveal" data-delay="1">MS Woodworks<br><em>تُصنع لتدوم، صَنعنا فتميزنا</em></h2>
-        <p class="reveal" data-delay="2">
-          علامة متخصصة في الأثاث الخشبي الفاخر المصنوع يدويًا، أسّسها <strong>محمد إسماعيل</strong>
-          على قاعدة بسيطة: خامة صادقة، يد ماهرة، وتصميم يتجاوز الموضة ليصبح جزءًا من المكان.
-        </p>
-
-        <div class="about__sign reveal" data-delay="3">
-          <span class="about__sign-name">Mohamed Ismail</span>
-          <span class="about__sign-role">Founder &amp; Master Craftsman</span>
-        </div>
-      </div>
-
-      <div class="contact-card reveal" data-delay="2" id="contact">
-        <h3 class="contact-card__title">تواصل معنا</h3>
-        <p class="contact-card__sub">اطلب عرض سعر مخصص أو استفسر عن مشروعك.</p>
+      <section class="contact-card" id="contact" aria-labelledby="contactTitle">
+        <h3 class="contact-card__title" id="contactTitle">اكتب تفاصيل مشروعك</h3>
+        <p class="contact-card__sub">نراجع طلبك ونتواصل معك لمناقشة المقاس والخامة والتفاصيل المتاحة.</p>
 
         <ul class="contact-list">
           <li>
@@ -500,21 +452,22 @@
 
         <form class="contact-form" id="contactForm" novalidate>
           <div class="field">
-            <input type="text" id="cf-name" name="name" required placeholder=" " />
+            <input type="text" id="cf-name" name="name" autocomplete="name" required placeholder=" " />
             <label for="cf-name">الاسم الكامل</label>
           </div>
           <div class="field">
-            <input type="tel" id="cf-phone" name="phone" required placeholder=" " dir="ltr" />
+            <input type="tel" id="cf-phone" name="phone" autocomplete="tel" required placeholder=" " dir="ltr" />
             <label for="cf-phone">رقم الهاتف</label>
           </div>
           <div class="field">
-            <textarea id="cf-msg" name="message" rows="3" required placeholder=" "></textarea>
+            <textarea id="cf-msg" name="message" rows="3" required placeholder=" " aria-describedby="cf-msg-help"></textarea>
             <label for="cf-msg">تفاصيل المشروع</label>
+            <small class="field__help" id="cf-msg-help">ما القطعة المطلوبة؟ اذكر المقاس والمكان إن كانا متاحين.</small>
           </div>
-          <button type="submit" class="btn btn--gold btn--block btn--lg">أرسل الطلب</button>
-          <p class="contact-form__note" id="formNote" role="status"></p>
+          <button type="submit" class="btn btn--gold btn--block btn--lg">أرسل تفاصيل مشروعك</button>
+          <p class="contact-form__note" id="formNote" role="status" aria-live="polite"></p>
         </form>
-      </div>
+      </section>
 
     </div>
   </section>
@@ -568,11 +521,11 @@
   </footer>
 
   <!-- Back to top -->
-  <div class="social-dock" aria-label="روابط التواصل السريع">
-    <a href="https://wa.me/201282993307" target="_blank" rel="noopener noreferrer" class="social-dock__item social-dock__item--wa" aria-label="واتساب">W</a>
-    <a href="https://www.instagram.com/mswoodworks_1/" target="_blank" rel="noopener noreferrer" class="social-dock__item social-dock__item--ig" aria-label="إنستغرام">IG</a>
-    <a href="https://www.facebook.com/MSWOODWORKS1" target="_blank" rel="noopener noreferrer" class="social-dock__item social-dock__item--fb" aria-label="فيسبوك">f</a>
-  </div>
+  <nav class="social-dock" aria-label="تواصل سريع">
+    <a href="https://wa.me/201282993307" target="_blank" rel="noopener noreferrer" class="social-dock__item social-dock__item--wa" aria-label="مراسلة MS Woodworks على واتساب">WA</a>
+    <a href="https://www.instagram.com/mswoodworks_1/" target="_blank" rel="noopener noreferrer" class="social-dock__item social-dock__item--ig" aria-label="حساب MS Woodworks على إنستغرام">IG</a>
+    <a href="https://www.facebook.com/MSWOODWORKS1" target="_blank" rel="noopener noreferrer" class="social-dock__item social-dock__item--fb" aria-label="صفحة MS Woodworks على فيسبوك">f</a>
+  </nav>
 
   <button class="to-top" id="toTop" aria-label="العودة للأعلى">↑</button>
 
@@ -582,7 +535,7 @@
       <section id="customerLoginView" aria-labelledby="customerLoginTitle">
         <p class="section-tag">حساب العميل</p>
         <h2 id="customerLoginTitle">تسجيل دخول العملاء</h2>
-        <p class="customer-auth-form__description">ادخلي إلى حسابك لمتابعة طلباتك، أو أنشئي حسابًا جديدًا.</p>
+<p class="customer-auth-form__description">سجّل الدخول لمتابعة الطلبات، أو أنشئ حسابًا جديدًا.</p>
         <form class="customer-auth-form" id="customerLoginForm">
           <label for="customerLoginEmail">البريد الإلكتروني</label>
           <input id="customerLoginEmail" name="email" type="email" autocomplete="username" required />
@@ -597,7 +550,7 @@
       <section id="customerRegisterView" aria-labelledby="customerRegisterTitle" hidden>
         <p class="section-tag">أهلًا بك</p>
         <h2 id="customerRegisterTitle">إنشاء حساب عميل</h2>
-        <p class="customer-auth-form__description">سجّلي بياناتك لمتابعة الطلبات التي ترسلينها من حسابك. لا يلزم تفعيل البريد حاليًا.</p>
+<p class="customer-auth-form__description">سجّل بياناتك لمتابعة الطلبات التي ترسلها من حسابك. لا يلزم تفعيل البريد حاليًا.</p>
         <form class="customer-auth-form" id="customerRegisterForm">
           <label for="customerName">الاسم</label>
           <input id="customerName" name="name" autocomplete="name" maxlength="100" required />
@@ -610,7 +563,7 @@
           <button class="btn btn--gold btn--block" id="customerRegisterSubmit" type="submit">إنشاء الحساب</button>
         </form>
         <p class="customer-auth-form__note" id="customerRegisterNote" role="status" aria-live="polite"></p>
-        <button class="customer-auth-switch" id="showCustomerLogin" type="button">لديك حساب؟ سجّلي الدخول</button>
+        <button class="customer-auth-switch" id="showCustomerLogin" type="button">لديك حساب؟ تسجيل الدخول</button>
       </section>
 
       <section id="customerAccountView" aria-labelledby="customerAccountTitle" hidden>

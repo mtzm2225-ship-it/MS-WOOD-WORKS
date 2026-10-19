@@ -1,7 +1,7 @@
 /**
  * admin.js — واجهة لوحة الإدارة الأمامية (MS Woodworks)
  * الغرض: إدارة الطلبات، تعليقات الصور، حسابات العملاء، العاملين (HR)، الحضور، السلف، الرواتب، والمصروفات.
- * يحتوي على منطق قفل قسم العاملين بتسجيل دخول منفصل للمالك فقط (Owner login).
+ * يحتوي على بوابة مالك منفصلة للعاملين والرواتب والمصروفات والعُهد والتحصيلات والمشاريع.
  */
 document.addEventListener('DOMContentLoaded', () => {
   // عناصر تسجيل دخول الإدارة العامة
@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const ownerLoginForm = document.getElementById('ownerLoginForm');
   const ownerLoginMessage = document.getElementById('ownerLoginMessage');
   const ownerLoginCancel = document.getElementById('ownerLoginCancel');
+  const ownerMoneyTabs = document.querySelectorAll('#ownerMoneyView > .owner-money-tabs .tab-button');
 
   const ordersList = document.getElementById('ordersList');
   const commentsList = document.getElementById('commentsList');
@@ -65,6 +66,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     if (response.status === 204) return null;
     const result = await response.json().catch(() => ({}));
+    const ownerOnlyEndpoint = /^\/api\/admin\/(?:hr\/|custodies(?:\/|\?|$)|expenses(?:\/|\?|$)|collections(?:\/|\?|$)|projects(?:\/|\?|$))/.test(url);
+    if (response.status === 403 && ownerOnlyEndpoint) {
+      selectDashboardView('ordersView');
+      showOwnerLogin(true);
+    }
     if (!response.ok) throw new Error(result.error || 'تعذر إكمال الطلب.');
     return result;
   }
@@ -85,8 +91,60 @@ document.addEventListener('DOMContentLoaded', () => {
   // عرض/إخفاء لوحة تسجيل دخول المالك (لقفل قسم العاملين فقط)
   function showOwnerLogin(show) {
     ownerLoginPanel.hidden = !show;
-    // عند عرض لوحة المالك، ن ocult لوحة الإدارة إن كانت ظاهرة
-    if (show) loginPanel.hidden = true;
+    if (show) {
+      loginPanel.hidden = true;
+      dashboard.hidden = true;
+      ownerLoginPanel.querySelector('input')?.focus();
+    }
+  }
+
+  function selectDashboardView(viewId) {
+    document.querySelectorAll('#dashboard > .dashboard-tabs .tab-button').forEach((tab) => {
+      const active = tab.dataset.view === viewId;
+      tab.classList.toggle('is-active', active);
+      tab.setAttribute('aria-selected', String(active));
+      tab.tabIndex = active ? 0 : -1;
+    });
+    document.querySelectorAll('#dashboard > .dashboard-view').forEach((view) => {
+      view.hidden = view.id !== viewId;
+    });
+  }
+
+  function selectOwnerMoneyView(viewId) {
+    ownerMoneyTabs.forEach((tab) => {
+      const active = tab.dataset.ownerMoneyView === viewId;
+      tab.classList.toggle('is-active', active);
+      tab.setAttribute('aria-selected', String(active));
+      tab.tabIndex = active ? 0 : -1;
+    });
+    document.querySelectorAll('#ownerMoneyView > .owner-money-view').forEach((view) => {
+      view.hidden = view.id !== viewId;
+    });
+  }
+
+  function bindTabKeyboard(tabs) {
+    tabs.forEach((tab, index) => {
+      tab.addEventListener('keydown', (event) => {
+        const rtl = document.documentElement.dir === 'rtl';
+        const forwardKey = rtl ? 'ArrowLeft' : 'ArrowRight';
+        const backwardKey = rtl ? 'ArrowRight' : 'ArrowLeft';
+        let nextIndex = index;
+        if (event.key === forwardKey) nextIndex = (index + 1) % tabs.length;
+        else if (event.key === backwardKey) nextIndex = (index - 1 + tabs.length) % tabs.length;
+        else if (event.key === 'Home') nextIndex = 0;
+        else if (event.key === 'End') nextIndex = tabs.length - 1;
+        else return;
+        event.preventDefault();
+        tabs[nextIndex].focus();
+        tabs[nextIndex].click();
+      });
+    });
+  }
+
+  async function loadOwnerMoneyView(viewId) {
+    if (viewId === 'hrView') await loadHrDashboard();
+    else if (viewId === 'expensesView') await loadExpensesDashboard();
+    else if (viewId === 'collectionsView') await loadCollectionsDashboard();
   }
 
   function hideOwnerLogin() {
@@ -111,6 +169,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('ordersNew').textContent = summary.orders_new;
     document.getElementById('commentsPending').textContent = summary.comments_pending;
     document.getElementById('commentsApproved').textContent = summary.comments_approved;
+    document.getElementById('adminSummary').setAttribute('aria-busy', 'false');
+    document.getElementById('summaryMessage').textContent = '';
   }
 
   function renderOrders(records) {
@@ -134,7 +194,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const message = element('p', 'record-message', order.message);
       const actions = element('div', 'record-actions');
-      actions.append(makeStatus(order.status));
+      const statusBadge = makeStatus(order.status);
+      const feedback = element('span', 'record-feedback');
+      feedback.setAttribute('role', 'status');
+      feedback.setAttribute('aria-live', 'polite');
+      actions.append(statusBadge);
       const select = document.createElement('select');
       select.setAttribute('aria-label', `تحديث حالة طلب ${order.name}`);
       Object.entries({ new: 'جديد', contacted: 'تم التواصل', 'in-progress': 'قيد التنفيذ', completed: 'مكتمل', cancelled: 'ملغي' }).forEach(([value, label]) => {
@@ -144,17 +208,36 @@ document.addEventListener('DOMContentLoaded', () => {
         select.append(option);
       });
       select.addEventListener('change', async () => {
+        const previousStatus = order.status;
+        const nextStatus = select.value;
         select.disabled = true;
-        ordersMessage.textContent = '';
+        feedback.textContent = 'جار حفظ الحالة…';
         try {
-          await api(`/api/admin/orders/${order.id}`, { method: 'PATCH', body: JSON.stringify({ status: select.value }) });
-          await Promise.all([loadOrders(), loadSummary()]);
+          const result = await api(`/api/admin/orders/${order.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ status: nextStatus })
+          });
+          order.status = result.status;
+          statusBadge.dataset.status = result.status;
+          statusBadge.textContent = statusLabels[result.status] || result.status;
+          feedback.textContent = 'تم حفظ الحالة.';
+          const currentFilter = document.getElementById('orderStatusFilter').value;
+          if (currentFilter !== 'all' && currentFilter !== result.status) {
+            currentOrders = currentOrders.filter((record) => record.id !== order.id);
+            card.remove();
+          }
+          loadSummary().catch((error) => {
+            document.getElementById('summaryMessage').textContent = error.message;
+          });
         } catch (error) {
-          ordersMessage.textContent = error.message;
+          order.status = previousStatus;
+          select.value = previousStatus;
+          feedback.textContent = `تعذر حفظ الحالة. ${error.message}`;
+        } finally {
           select.disabled = false;
         }
       });
-      actions.append(select);
+      actions.append(select, feedback);
       card.append(top, contact, message, actions);
       ordersList.append(card);
     });
@@ -164,12 +247,22 @@ document.addEventListener('DOMContentLoaded', () => {
   async function loadOrders() {
     const status = document.getElementById('orderStatusFilter').value;
     const params = status === 'all' ? '' : `?status=${encodeURIComponent(status)}`;
-    currentOrders = await api(`/api/admin/orders${params}`);
-    renderOrders(currentOrders);
+    ordersList.setAttribute('aria-busy', 'true');
+    ordersList.replaceChildren(element('p', 'loading-state', 'جار تحميل الطلبات…'));
+    try {
+      currentOrders = await api(`/api/admin/orders${params}`);
+      renderOrders(currentOrders);
+    } catch (error) {
+      ordersList.replaceChildren(element('p', 'empty-state', `تعذر تحميل الطلبات: ${error.message}`));
+      throw error;
+    } finally {
+      ordersList.setAttribute('aria-busy', 'false');
+    }
   }
 
   function renderComments(records) {
     commentsList.replaceChildren();
+    commentsList.setAttribute('aria-busy', 'false');
     if (!records.length) {
       commentsList.append(element('p', 'empty-state', 'لا توجد تعليقات في هذا القسم.'));
       return;
@@ -199,13 +292,13 @@ document.addEventListener('DOMContentLoaded', () => {
       if (comment.status !== 'approved') {
         const approve = element('button', 'button button--approve', 'اعتماد ونشر');
         approve.type = 'button';
-        approve.addEventListener('click', () => updateComment(comment.id, 'approved'));
+        approve.addEventListener('click', () => updateComment(comment.id, 'approved', approve));
         actions.append(approve);
       }
       if (comment.status !== 'rejected') {
         const reject = element('button', 'button button--reject', 'رفض');
         reject.type = 'button';
-        reject.addEventListener('click', () => updateComment(comment.id, 'rejected'));
+        reject.addEventListener('click', () => updateComment(comment.id, 'rejected', reject));
         actions.append(reject);
       }
       content.append(actions);
@@ -217,7 +310,16 @@ document.addEventListener('DOMContentLoaded', () => {
   async function loadComments() {
     const status = document.getElementById('commentStatusFilter').value;
     const params = status === 'all' ? '' : `?status=${encodeURIComponent(status)}`;
-    renderComments(await api(`/api/admin/comments${params}`));
+    commentsList.setAttribute('aria-busy', 'true');
+    commentsList.replaceChildren(element('p', 'loading-state', 'جار تحميل التعليقات…'));
+    try {
+      renderComments(await api(`/api/admin/comments${params}`));
+    } catch (error) {
+      commentsList.replaceChildren(element('p', 'empty-state', `تعذر تحميل التعليقات: ${error.message}`));
+      throw error;
+    } finally {
+      commentsList.setAttribute('aria-busy', 'false');
+    }
   }
 
   function renderCustomers(customers) {
@@ -247,20 +349,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function loadCustomers() {
     customersMessage.textContent = '';
+    customersList.setAttribute('aria-busy', 'true');
+    customersList.replaceChildren(element('p', 'loading-state', 'جار تحميل حسابات العملاء…'));
     try {
       renderCustomers(await api('/api/admin/customers'));
     } catch (error) {
       customersMessage.textContent = error.message;
+    } finally {
+      customersList.setAttribute('aria-busy', 'false');
     }
   }
 
-  async function updateComment(id, status) {
+  async function updateComment(id, status, actionButton) {
     commentsMessage.textContent = '';
+    actionButton.disabled = true;
+    actionButton.textContent = status === 'approved' ? 'جار الاعتماد…' : 'جار الرفض…';
     try {
       await api(`/api/admin/comments/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) });
-      await Promise.all([loadComments(), loadSummary()]);
     } catch (error) {
-      commentsMessage.textContent = error.message;
+      commentsMessage.textContent = `تعذر تحديث التعليق. ${error.message}`;
+      actionButton.disabled = false;
+      actionButton.textContent = status === 'approved' ? 'اعتماد ونشر' : 'رفض';
+      return;
+    }
+
+    commentsMessage.textContent = status === 'approved' ? 'تم اعتماد التعليق ونشره.' : 'تم رفض التعليق.';
+    const refreshResults = await Promise.allSettled([loadComments(), loadSummary()]);
+    if (refreshResults.some((result) => result.status === 'rejected')) {
+      commentsMessage.textContent += ' تعذر تحديث العرض؛ أعد تحميل القائمة.';
     }
   }
 
@@ -632,8 +748,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const to = document.getElementById('expenseTo').value;
     if (!from || !to) return;
     if (from > to) throw new Error('تاريخ البداية يجب أن يكون قبل تاريخ النهاية أو مساويًا له.');
-    const query = new URLSearchParams({ from, to });
-    renderExpenseReport(await api(`/api/admin/expenses?${query}`));
+    const list = document.getElementById('expensesList');
+    list.setAttribute('aria-busy', 'true');
+    list.replaceChildren(element('p', 'loading-state', 'جار تحميل مصروفات الفترة…'));
+    try {
+      const query = new URLSearchParams({ from, to });
+      renderExpenseReport(await api(`/api/admin/expenses?${query}`));
+    } finally {
+      list.setAttribute('aria-busy', 'false');
+    }
   }
 
   async function refreshExpenseReportAfterSave(message, successMessage) {
@@ -759,10 +882,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const to = document.getElementById('collectionTo').value;
     if (!from || !to) return null;
     if (from > to) throw new Error('تاريخ بداية التحصيلات يجب أن يكون قبل تاريخ النهاية أو مساويًا له.');
-    const query = new URLSearchParams({ from, to });
-    const report = await api(`/api/admin/collections?${query}`);
-    renderCollections(report);
-    return report;
+    const list = document.getElementById('receiptsList');
+    list.setAttribute('aria-busy', 'true');
+    list.replaceChildren(element('p', 'loading-state', 'جار تحميل التحصيلات…'));
+    try {
+      const query = new URLSearchParams({ from, to });
+      const report = await api(`/api/admin/collections?${query}`);
+      renderCollections(report);
+      return report;
+    } finally {
+      list.setAttribute('aria-busy', 'false');
+    }
   }
 
   async function refreshCollectionsAfterSave(message, successMessage, projectId = '') {
@@ -872,13 +1002,17 @@ document.addEventListener('DOMContentLoaded', () => {
   async function loadDashboard() {
     ordersMessage.textContent = '';
     commentsMessage.textContent = '';
-    try {
-      await Promise.all([loadSummary(), loadOrders(), loadComments()]);
-    } catch (error) {
-      // إذا انتهت الجلسة نعيد المستخدم إلى شاشة تسجيل الدخول.
-      if (error.message.includes('تسجيل الدخول')) showSignedIn(false);
-      else ordersMessage.textContent = error.message;
+    const results = await Promise.allSettled([loadSummary(), loadOrders(), loadComments()]);
+    const [summaryResult, ordersResult, commentsResult] = results;
+    if (summaryResult.status === 'rejected') {
+      document.getElementById('adminSummary').setAttribute('aria-busy', 'false');
+      document.getElementById('summaryMessage').textContent = summaryResult.reason.message;
     }
+    if (ordersResult.status === 'rejected') ordersMessage.textContent = ordersResult.reason.message;
+    if (commentsResult.status === 'rejected') commentsMessage.textContent = commentsResult.reason.message;
+    if ([summaryResult, ordersResult, commentsResult].some((result) => (
+      result.status === 'rejected' && result.reason.message.includes('تسجيل الدخول')
+    ))) showSignedIn(false);
   }
 
   loginForm.addEventListener('submit', async (event) => {
@@ -916,8 +1050,10 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       ownerLoginForm.reset();
       hideOwnerLogin();
-      showSignedIn(true); // نظهر لوحة الإدارة لأن المالك دخل
-      await loadDashboard();
+      showSignedIn(true);
+      selectDashboardView('ownerMoneyView');
+      selectOwnerMoneyView('hrView');
+      await loadOwnerMoneyView('hrView');
     } catch (error) {
       ownerLoginMessage.textContent = error.message;
     } finally {
@@ -927,12 +1063,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   ownerLoginCancel.addEventListener('click', () => {
     hideOwnerLogin();
+    showSignedIn(true);
+    selectDashboardView('ordersView');
   });
 
   document.getElementById('logoutButton').addEventListener('click', async () => {
     try {
+      // جلسة الإدارة والمالك مشتركة؛ مسار الخروج الموحد ينهي أي دور مسجل.
       await api('/api/admin/logout', { method: 'POST' });
-      await api('/api/owner/logout', { method: 'POST' });
       showSignedIn(false);
       hideOwnerLogin();
     } catch (error) {
@@ -1215,12 +1353,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  document.querySelectorAll('.hr-tabs .tab-button').forEach((button) => {
+  const hrTabs = [...document.querySelectorAll('.hr-tabs .tab-button')];
+  bindTabKeyboard(hrTabs);
+  hrTabs.forEach((button) => {
     button.addEventListener('click', async () => {
-      document.querySelectorAll('.hr-tabs .tab-button').forEach((tab) => {
+      hrTabs.forEach((tab) => {
         const active = tab === button;
         tab.classList.toggle('is-active', active);
         tab.setAttribute('aria-selected', String(active));
+        tab.tabIndex = active ? 0 : -1;
       });
       document.querySelectorAll('.hr-subview').forEach((view) => {
         view.hidden = view.id !== button.dataset.hrView;
@@ -1235,39 +1376,48 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  document.querySelectorAll('#dashboard > .dashboard-tabs .tab-button').forEach((button) => {
+  bindTabKeyboard([...ownerMoneyTabs]);
+  ownerMoneyTabs.forEach((button) => {
     button.addEventListener('click', async () => {
-      document.querySelectorAll('#dashboard > .dashboard-tabs .tab-button').forEach((tab) => {
-        const active = tab === button;
-        tab.classList.toggle('is-active', active);
-        tab.setAttribute('aria-selected', String(active));
-      });
-      document.querySelectorAll('.dashboard-view').forEach((view) => {
-        view.hidden = view.id !== button.dataset.view;
-      });
-      if (button.dataset.view === 'commentsView') await loadComments();
-      else if (button.dataset.view === 'customersView') await loadCustomers();
-      else if (button.dataset.view === 'hrView') {
-        // قسم العاملين محجوز للمالك فقط — نتأكد من تسجيل دخول المالك قبل العرض
+      const viewId = button.dataset.ownerMoneyView;
+      selectOwnerMoneyView(viewId);
+      try {
+        await loadOwnerMoneyView(viewId);
+      } catch (error) {
+        const messageId = viewId === 'hrView' ? 'workersMessage'
+          : viewId === 'expensesView' ? 'expensesMessage' : 'collectionsMessage';
+        document.getElementById(messageId).textContent = error.message;
+      }
+    });
+  });
+
+  const dashboardTabs = [...document.querySelectorAll('#dashboard > .dashboard-tabs .tab-button')];
+  bindTabKeyboard(dashboardTabs);
+  dashboardTabs.forEach((button) => {
+    button.addEventListener('click', async () => {
+      const viewId = button.dataset.view;
+      selectDashboardView(viewId);
+      if (viewId === 'commentsView') await loadComments();
+      else if (viewId === 'customersView') await loadCustomers();
+      else if (viewId === 'ownerMoneyView') {
         const owner = await api('/api/owner/session').catch(() => ({ authenticated: false }));
         if (!owner.authenticated) {
           showOwnerLogin(true);
-          // نعيد التحديد إلى التبويب السابق (الطلبات) لأن المستخدم غير مصرح له بالعاملين
-          document.querySelectorAll('#dashboard > .dashboard-tabs .tab-button').forEach((tab) => {
-            tab.classList.toggle('is-active', tab.dataset.view === 'ordersView');
-            tab.setAttribute('aria-selected', tab.dataset.view === 'ordersView');
-          });
-          document.querySelectorAll('.dashboard-view').forEach((view) => {
-            view.hidden = view.id !== 'ordersView';
-          });
+          selectDashboardView('ordersView');
           await loadOrders();
-        } else {
-          await loadHrDashboard();
+          return;
         }
-      }
-      else if (button.dataset.view === 'expensesView') await loadExpensesDashboard();
-      else if (button.dataset.view === 'collectionsView') await loadCollectionsDashboard();
-      else await loadOrders();
+        const activeOwnerTab = document.querySelector('#ownerMoneyView > .owner-money-tabs .tab-button.is-active');
+        const ownerViewId = activeOwnerTab?.dataset.ownerMoneyView || 'hrView';
+        selectOwnerMoneyView(ownerViewId);
+        try {
+          await loadOwnerMoneyView(ownerViewId);
+        } catch (error) {
+          const messageId = ownerViewId === 'hrView' ? 'workersMessage'
+            : ownerViewId === 'expensesView' ? 'expensesMessage' : 'collectionsMessage';
+          document.getElementById(messageId).textContent = error.message;
+        }
+      } else if (viewId === 'ordersView') await loadOrders();
     });
   });
 
@@ -1284,9 +1434,13 @@ document.addEventListener('DOMContentLoaded', () => {
     .then(([adminResult, ownerResult]) => {
       const adminSignedIn = adminResult.authenticated;
       const ownerSignedIn = ownerResult.authenticated;
-      showSignedIn(adminSignedIn || ownerSignedIn);
-      // إذا كان المالك مسجلاً entry، نسمح له بالدخول إلى لوحة الإدارة (ولديه صلاحية العاملين تلقائياً)
-      if (adminSignedIn || ownerSignedIn) loadDashboard();
+      // لوحة الإدارة العامة تحتاج دور الإدارة؛ دخول المالك وحده يحتفظ بجلسة HR حتى يكتمل تسجيل الإدارة.
+      showSignedIn(adminSignedIn);
+      if (adminSignedIn) {
+        loadDashboard();
+      } else if (ownerSignedIn) {
+        loginMessage.textContent = 'جلسة المالك محفوظة. سجّل الدخول كإدارة لفتح لوحة التحكم وقسم العاملين.';
+      }
     })
     .catch(() => {
       showSignedIn(false);

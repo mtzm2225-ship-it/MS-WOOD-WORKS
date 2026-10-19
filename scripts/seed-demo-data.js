@@ -22,8 +22,9 @@ async function main() {
   if (process.env.NODE_ENV === 'production') {
     throw new Error('Demo records cannot be added when NODE_ENV is production.');
   }
-  if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD) {
-    throw new Error('Set ADMIN_EMAIL and ADMIN_PASSWORD in .env before seeding demo data.');
+  if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD
+    || !process.env.OWNER_USERNAME || !process.env.OWNER_PASSWORD) {
+    throw new Error('Set ADMIN_EMAIL, ADMIN_PASSWORD, OWNER_USERNAME, and OWNER_PASSWORD in .env before seeding demo data.');
   }
 
   const session = { cookie: '' };
@@ -36,7 +37,7 @@ async function main() {
         ...options.headers
       }
     });
-    if (path === '/api/admin/login') {
+    if (path === '/api/admin/login' || path === '/api/owner/login') {
       const cookie = response.headers.get('set-cookie')?.match(/mswood\.sid=[^;]+/);
       if (cookie) session.cookie = cookie[0];
     }
@@ -51,6 +52,13 @@ async function main() {
     body: JSON.stringify({
       email: process.env.ADMIN_EMAIL,
       password: process.env.ADMIN_PASSWORD
+    })
+  });
+  await api('/api/owner/login', {
+    method: 'POST',
+    body: JSON.stringify({
+      username: process.env.OWNER_USERNAME,
+      password: process.env.OWNER_PASSWORD
     })
   });
 
