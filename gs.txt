@@ -1,5 +1,0 @@
-A  diff.txt
-A  gitstatus.txt
-AM push-output.txt
-A  push-to-github.ps1
-?? gs.txt

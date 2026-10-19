@@ -7,3 +7,15 @@ npm-debug.log*
 
 # Auxly - AI Task Management (internal data)
 .auxly/
+
+diff.txt
+gs.txt
+gitstatus.txt
+push-output.txt
+push-to-github.ps1
+head-server.txt
+hash-head.txt
+hash-working.txt
+verify-log.txt
+.local-preview-server.js
+*.log
