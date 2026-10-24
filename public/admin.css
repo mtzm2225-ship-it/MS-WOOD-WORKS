@@ -115,7 +115,7 @@ h2 { margin-bottom: 4px; font-size: 1.4rem; }
 
 .button:disabled { cursor: wait; opacity: 0.65; }
 .button--primary { background: var(--admin-wood); color: white; font-weight: 700; }
-.button--primary:hover { background: #4d3222; }
+.button--primary:hover { background: #4d3222; transform: translateY(-1px); }
 .button--quiet { border-color: var(--admin-line); background: var(--admin-white); color: var(--admin-ink); }
 .button--quiet:hover { border-color: var(--admin-gold); }
 .button:focus-visible, .admin-header a:focus-visible { outline: 3px solid var(--admin-gold); outline-offset: 3px; }
@@ -139,16 +139,18 @@ h2 { margin-bottom: 4px; font-size: 1.4rem; }
 .login-form { display: grid; gap: 10px; margin-top: 24px; }
 .login-form label { margin-top: 5px; font-size: 0.93rem; font-weight: 700; }
 .login-form input, .filters input, .filters select, .view-heading > select {
-  min-height: 44px;
-  padding: 9px 12px;
+  min-height: 46px;
+  padding: 10px 13px;
   border: 1px solid var(--admin-line);
-  border-radius: var(--admin-radius-sm);
+  border-radius: 10px;
   background: var(--admin-surface);
   color: var(--admin-ink);
+  transition: border-color var(--admin-motion-normal), box-shadow var(--admin-motion-normal);
 }
 .login-form input:focus, .filters input:focus, .filters select:focus, .view-heading > select:focus {
-  outline: 2px solid rgba(182, 140, 79, 0.35);
+  outline: none;
   border-color: var(--admin-gold);
+  box-shadow: 0 0 0 3px rgba(182, 140, 79, 0.2);
 }
 .login-form .button { margin-top: 8px; }
 .form-message, .inline-message { min-height: 1.4em; margin: 0; color: var(--admin-red); }
@@ -167,9 +169,12 @@ h2 { margin-bottom: 4px; font-size: 1.4rem; }
   flex-direction: column;
   justify-content: space-between;
   border: 1px solid var(--admin-line);
-  border-radius: var(--admin-radius-md);
+  border-radius: 14px;
   background: var(--admin-surface);
+  transition: transform var(--admin-motion-normal), box-shadow var(--admin-motion-normal);
 }
+
+.summary-item:hover { transform: translateY(-2px); box-shadow: var(--admin-shadow-md); }
 
 .summary-item span { color: var(--admin-muted); font-size: 0.92rem; }
 .summary-item strong { font-family: var(--admin-font-metric); font-size: 1.8rem; line-height: 1; }
@@ -205,9 +210,12 @@ h2 { margin-bottom: 4px; font-size: 1.4rem; }
 .record {
   padding: 18px 20px;
   border: 1px solid var(--admin-line);
-  border-radius: var(--admin-radius-md);
+  border-radius: 14px;
   background: var(--admin-surface);
+  transition: border-color var(--admin-motion-normal);
 }
+
+.record:hover { border-color: rgba(182, 140, 79, 0.45); }
 
 .record-top, .record-actions, .record-contact, .comment-photo {
   display: flex;
@@ -275,16 +283,18 @@ h2 { margin-bottom: 4px; font-size: 1.4rem; }
 .hr-form label { margin-top: 4px; font-size: 0.92rem; font-weight: 700; }
 .hr-form input, .hr-form select, .category-record input {
   min-width: 0;
-  min-height: 42px;
-  padding: 8px 10px;
+  min-height: 44px;
+  padding: 8px 11px;
   border: 1px solid var(--admin-line);
-  border-radius: 8px;
+  border-radius: 10px;
   background: #fff;
   color: var(--admin-ink);
+  transition: border-color var(--admin-motion-normal), box-shadow var(--admin-motion-normal);
 }
 .hr-form input:focus, .hr-form select:focus, .category-record input:focus {
-  outline: 2px solid rgba(182, 140, 79, 0.35);
+  outline: none;
   border-color: var(--admin-gold);
+  box-shadow: 0 0 0 3px rgba(182, 140, 79, 0.2);
 }
 .hr-form-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
 .hr-category-form { grid-template-columns: minmax(0, 1fr) auto; align-items: end; }
