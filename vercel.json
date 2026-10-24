@@ -5,10 +5,6 @@
     {
       "source": "/admin",
       "destination": "/admin.html"
-    },
-    {
-      "source": "/api/:path*",
-      "destination": "/api/index.js"
     }
   ],
   "headers": [
