@@ -69,7 +69,6 @@ const pool = new Pool({
   idleTimeoutMillis: 5000,
   connectionTimeoutMillis: 5000,
   allowExitOnIdle: true,
-  statement_timeout: 15000,
   application_name: 'mswood'
 });
 
