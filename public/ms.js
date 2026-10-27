@@ -262,6 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let galleryDetailsTrigger = null;
   let galleryDetailsIndex = 0;
+  let pendingEnquire = null;
   const showGalleryDetails = (item, trigger) => {
     if (!galleryDetailsDialog) return;
     galleryDetailsTrigger = trigger || galleryDetailsTrigger;
@@ -320,7 +321,22 @@ document.addEventListener('DOMContentLoaded', () => {
     galleryDetailsDialog.addEventListener('click', (event) => {
       if (event.target === galleryDetailsDialog) galleryDetailsDialog.close();
     });
-    galleryDetailsDialog.addEventListener('close', () => galleryDetailsTrigger?.focus());
+    galleryDetailsDialog.addEventListener('close', () => {
+      galleryDetailsTrigger?.focus();
+      if (!pendingEnquire) return;
+      const item = pendingEnquire;
+      pendingEnquire = null;
+      const message = form?.querySelector('#cf-msg');
+      if (!item || !message || !formNote) return;
+      message.value = `أرغب في تنفيذ قطعة مشابهة لنموذج «${item.title}» (${item.category}).\nالمقاس التقريبي: …\nالخامة المفضلة: …`;
+      message.dispatchEvent(new Event('input', { bubbles: true }));
+      formNote.textContent = 'جهّزنا بداية الطلب من النموذج المختار؛ عدّل المقاس والخامة ثم أرسل.';
+      document.getElementById('contact')?.scrollIntoView({
+        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+        block: 'center'
+      });
+      message.focus({ preventScroll: true });
+    });
     galleryDetailsDialog.addEventListener('keydown', (event) => {
       if (event.key === 'ArrowLeft') {
         event.preventDefault();
@@ -332,7 +348,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     galleryPrev?.addEventListener('click', () => stepGallery(-1));
     galleryNext?.addEventListener('click', () => stepGallery(1));
-    document.getElementById('galleryDetailsEnquire').addEventListener('click', () => galleryDetailsDialog.close());
+    document.getElementById('galleryDetailsEnquire').addEventListener('click', (event) => {
+      event.preventDefault();
+      pendingEnquire = visibleGalleryAssets[galleryDetailsIndex] || null;
+      galleryDetailsDialog.close();
+    });
   }
 
   if (commentsDialog) {

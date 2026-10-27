@@ -1039,10 +1039,16 @@ app.get('/api/admin/hr/payroll', requireOwner, async (req, res, next) => {
 
 /**
  * خدمة الملفات الثابتة (Static Files) — الصفحة الرئيسية، لوحة الإدارة، CSS، JS، وصور المعرض.
+ * صفحات HTML تُرسل بلا كاش ولا ETag حتى يرى الزائر أي تحديث فور نشره.
  */
-app.get('/', (req, res) => res.sendFile(path.join(publicDir, 'index.html')));
-app.get('/admin', (req, res) => res.sendFile(path.join(publicDir, 'admin.html')));
-app.get('/admin.html', (req, res) => res.sendFile(path.join(publicDir, 'admin.html')));
+const sendPage = (res, file) => {
+  res.set('Cache-Control', 'no-store');
+  return res.sendFile(path.join(publicDir, file), { cacheControl: false, etag: false, lastModified: false });
+};
+
+app.get('/', (req, res) => sendPage(res, 'index.html'));
+app.get('/admin', (req, res) => sendPage(res, 'admin.html'));
+app.get('/admin.html', (req, res) => sendPage(res, 'admin.html'));
 app.get('/ms.css', (req, res) => res.sendFile(path.join(publicDir, 'ms.css')));
 app.get('/ms.js', (req, res) => res.sendFile(path.join(publicDir, 'ms.js')));
 app.get('/admin.css', (req, res) => res.sendFile(path.join(publicDir, 'admin.css')));
