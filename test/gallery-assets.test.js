@@ -19,12 +19,13 @@ test('shared gallery assets retain valid images and stable comment IDs', () => {
   assert.deepEqual(
     Object.keys(byId).sort(),
     [
-      'brand-mark', 'brand-story', 'craft-detail', 'custom-boards', 'executive-walnut',
-      'fine-interior', 'hand-finish', 'modern-space', 'walnut-desk', 'wood-detail',
-      'workshop-details'
+      'bedroom-walnut', 'brand-mark', 'brand-story', 'console-entry', 'craft-detail',
+      'craft-hands', 'custom-boards', 'dining-table', 'executive-walnut', 'fine-interior',
+      'hand-finish', 'kitchen-walnut', 'library-unit', 'majlis', 'modern-space',
+      'walnut-desk', 'wood-detail', 'workshop-details'
     ]
   );
-  assert.equal(gallery.length, 3);
+  assert.equal(gallery.length, 10);
   assert.equal(new Set(gallery.map((asset) => asset.id)).size, gallery.length);
   assert.equal(new Set(gallery.map((asset) => asset.src)).size, gallery.length);
 

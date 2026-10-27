@@ -18,6 +18,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // عناصر المعرض وتعليقات العملاء
   const galleryGrid = document.getElementById('galleryGrid');
+  const galleryFilters = document.getElementById('galleryFilters');
+  const galleryCount = document.getElementById('galleryCount');
+  const galleryPrev = document.getElementById('galleryPrev');
+  const galleryNext = document.getElementById('galleryNext');
   const galleryDetailsDialog = document.getElementById('galleryDetails');
   const customerReviews = document.getElementById('customerReviews');
   const customerReviewForm = document.getElementById('customerReviewForm');
@@ -55,6 +59,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // بيانات المعرض تأتي من gallery-assets.js؛ نتابع العمل حتى لو تعذر تحميلها.
   const galleryAssets = (window.MSWoodGalleryAssets && window.MSWoodGalleryAssets.gallery) || [];
+  const galleryCategories = ['الكل', ...new Set(galleryAssets.map((asset) => asset.category))];
+  let activeGalleryCategory = 'الكل';
+  let visibleGalleryAssets = galleryAssets;
+
+  if (galleryFilters) {
+    galleryCategories.forEach((category) => {
+      const filter = document.createElement('button');
+      filter.type = 'button';
+      filter.className = 'gallery-filter';
+      filter.dataset.category = category;
+      filter.textContent = category;
+      filter.setAttribute('aria-pressed', String(category === activeGalleryCategory));
+      galleryFilters.append(filter);
+    });
+  }
 
   if (customerReviewForm) {
     const projectSelect = customerReviewForm.elements.namedItem('galleryId');
@@ -69,16 +88,27 @@ document.addEventListener('DOMContentLoaded', () => {
   const renderGallery = () => {
     if (!galleryGrid) return;
 
+    visibleGalleryAssets = activeGalleryCategory === 'الكل'
+      ? galleryAssets
+      : galleryAssets.filter((asset) => asset.category === activeGalleryCategory);
+
     galleryGrid.classList.add('gallery__grid--curated');
     galleryGrid.replaceChildren();
-    if (!galleryAssets.length) {
+
+    if (galleryCount) {
+      galleryCount.textContent = visibleGalleryAssets.length
+        ? `${visibleGalleryAssets.length} ${visibleGalleryAssets.length === 1 ? 'نموذج' : 'نماذج'} · ${activeGalleryCategory}`
+        : '';
+    }
+
+    if (!visibleGalleryAssets.length) {
       const empty = document.createElement('p');
       empty.className = 'gallery-comments__empty';
       empty.textContent = 'تعذر تحميل صور المعرض الآن. حدّث الصفحة للمحاولة مرة أخرى.';
       galleryGrid.append(empty);
       return;
     }
-    galleryAssets.forEach((item, index) => {
+    visibleGalleryAssets.forEach((item, index) => {
       const card = document.createElement('article');
       card.className = `tile ${index === 0 ? 'tile--feature' : 'tile--side'}`;
       const detailsButton = document.createElement('button');
@@ -114,6 +144,18 @@ document.addEventListener('DOMContentLoaded', () => {
       galleryGrid.append(card);
     });
   };
+
+  if (galleryFilters) {
+    galleryFilters.addEventListener('click', (event) => {
+      const button = event.target.closest('.gallery-filter');
+      if (!button || button.dataset.category === activeGalleryCategory) return;
+      activeGalleryCategory = button.dataset.category;
+      galleryFilters.querySelectorAll('.gallery-filter').forEach((filter) => {
+        filter.setAttribute('aria-pressed', String(filter === button));
+      });
+      renderGallery();
+    });
+  }
 
   const renderComments = (comments) => {
     commentList.replaceChildren();
@@ -219,17 +261,32 @@ document.addEventListener('DOMContentLoaded', () => {
   loadCustomerReviews();
 
   let galleryDetailsTrigger = null;
+  let galleryDetailsIndex = 0;
   const showGalleryDetails = (item, trigger) => {
     if (!galleryDetailsDialog) return;
-    galleryDetailsTrigger = trigger;
+    galleryDetailsTrigger = trigger || galleryDetailsTrigger;
+    galleryDetailsIndex = Math.max(0, visibleGalleryAssets.findIndex((asset) => asset.id === item.id));
     document.getElementById('galleryDetailsTitle').textContent = item.title;
     document.getElementById('galleryDetailsCategory').textContent = item.category;
     document.getElementById('galleryDetailsDescription').textContent = item.alt;
     const image = document.getElementById('galleryDetailsImage');
     image.src = item.src;
     image.alt = item.alt;
-    galleryDetailsDialog.showModal();
-    document.getElementById('closeGalleryDetails').focus();
+    const counter = document.getElementById('galleryCounter');
+    if (counter) counter.textContent = `${galleryDetailsIndex + 1} / ${visibleGalleryAssets.length}`;
+    const hasSiblings = visibleGalleryAssets.length > 1;
+    if (galleryPrev) galleryPrev.disabled = !hasSiblings;
+    if (galleryNext) galleryNext.disabled = !hasSiblings;
+    if (!galleryDetailsDialog.open) {
+      galleryDetailsDialog.showModal();
+      document.getElementById('closeGalleryDetails').focus();
+    }
+  };
+
+  const stepGallery = (delta) => {
+    if (!galleryDetailsDialog || visibleGalleryAssets.length < 2) return;
+    galleryDetailsIndex = (galleryDetailsIndex + delta + visibleGalleryAssets.length) % visibleGalleryAssets.length;
+    showGalleryDetails(visibleGalleryAssets[galleryDetailsIndex], galleryDetailsTrigger);
   };
 
   if (galleryGrid) {
@@ -264,6 +321,17 @@ document.addEventListener('DOMContentLoaded', () => {
       if (event.target === galleryDetailsDialog) galleryDetailsDialog.close();
     });
     galleryDetailsDialog.addEventListener('close', () => galleryDetailsTrigger?.focus());
+    galleryDetailsDialog.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        stepGallery(1);
+      } else if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        stepGallery(-1);
+      }
+    });
+    galleryPrev?.addEventListener('click', () => stepGallery(-1));
+    galleryNext?.addEventListener('click', () => stepGallery(1));
     document.getElementById('galleryDetailsEnquire').addEventListener('click', () => galleryDetailsDialog.close());
   }
 
@@ -551,6 +619,22 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('load', () => {
     setHeaderState();
     setActiveNav();
+  });
+
+  document.querySelectorAll('[data-idea-message]').forEach((button) => {
+    button.addEventListener('click', () => {
+      if (!form || !formNote) return;
+      const message = form.querySelector('#cf-msg');
+      if (!message) return;
+      message.value = button.dataset.ideaMessage || '';
+      message.dispatchEvent(new Event('input', { bubbles: true }));
+      formNote.textContent = 'جهّزنا بداية الطلب؛ عدّل المقاس والخامة ثم أرسل.';
+      document.getElementById('contact')?.scrollIntoView({
+        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+        block: 'center'
+      });
+      message.focus({ preventScroll: true });
+    });
   });
 
   if (form && formNote) {

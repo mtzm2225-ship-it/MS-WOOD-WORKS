@@ -608,6 +608,52 @@ main > section.section + section.section::before {
   text-align: center;
 }
 
+/* تصفية المعرض */
+.gallery__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  margin-bottom: 22px;
+}
+
+.gallery-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gallery-filter {
+  min-height: 40px;
+  padding: 8px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 700;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+
+.gallery-filter:hover {
+  border-color: rgba(191, 141, 66, 0.6);
+  color: var(--ink);
+}
+
+.gallery-filter[aria-pressed="true"] {
+  background: var(--panel-strong);
+  border-color: var(--panel-strong);
+  color: #fdf6ea;
+}
+
+.gallery__count {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
 /* ════ 9. تفاصيل النموذج (dialog) ════ */
 .gallery-details {
   width: min(980px, calc(100% - 28px));
@@ -647,6 +693,42 @@ main > section.section + section.section::before {
 
 .gallery-details__copy h2 { margin: 0; font-size: clamp(1.6rem, 3vw, 2.3rem); }
 .gallery-details__copy > p:not(.section-tag) { margin: 0; color: var(--ink-soft); line-height: 1.8; }
+
+.gallery-details__nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.gallery-details__arrow {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--bg);
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: background var(--transition), color var(--transition);
+}
+
+.gallery-details__arrow:hover:not(:disabled) {
+  background: var(--panel-strong);
+  color: #fdf6ea;
+}
+
+.gallery-details__arrow:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.gallery-details__counter {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
 
 .gallery-comments {
   width: min(680px, calc(100% - 32px));
@@ -1332,6 +1414,211 @@ main > section.section + section.section::before {
   color: var(--gold-3);
 }
 
+/* ════ 15.ب أفكار المشاريع ════ */
+.ideas { background: var(--bg); }
+
+.ideas__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(14px, 2vw, 22px);
+}
+
+.idea-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: clamp(20px, 2.4vw, 28px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--panel);
+  box-shadow: var(--shadow-md);
+  transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+}
+
+.idea-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(191, 141, 66, 0.45);
+  box-shadow: var(--shadow-lg);
+}
+
+.idea-card__num {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  letter-spacing: 0.08em;
+  color: var(--gold-3);
+}
+
+.idea-card h3 { margin: 0; font-size: 1.22rem; }
+.idea-card p { margin: 0; color: var(--ink-soft); font-size: 0.96rem; }
+
+.idea-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.idea-card__tags li {
+  padding: 4px 10px;
+  border: 1px solid rgba(191, 141, 66, 0.32);
+  border-radius: var(--radius-pill);
+  color: var(--gold-3);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.idea-card__cta {
+  margin-top: auto;
+  padding: 12px 0 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 800;
+  text-align: start;
+  transition: color var(--transition);
+}
+
+.idea-card__cta:hover { color: var(--gold-3); }
+
+.ideas__note {
+  margin: 26px 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+/* ════ 15.ج الخامات والتشطيبات ════ */
+.materials { background: var(--panel); }
+
+.materials__head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 32px;
+  margin-bottom: 38px;
+}
+
+.materials__head .section-sub { max-width: 440px; margin: 0; }
+
+.materials__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(14px, 2vw, 22px);
+}
+
+.material-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--bg);
+}
+
+.material-card__swatch {
+  height: 104px;
+  border-radius: calc(var(--radius-card) - 8px);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+.material-card__swatch--walnut {
+  background:
+    repeating-linear-gradient(92deg, rgba(255, 255, 255, 0.05) 0 2px, transparent 2px 7px),
+    linear-gradient(135deg, #6b4a33, #4a3121 55%, #39251a);
+}
+
+.material-card__swatch--oak {
+  background:
+    repeating-linear-gradient(88deg, rgba(255, 255, 255, 0.08) 0 2px, transparent 2px 9px),
+    linear-gradient(135deg, #c9a06a, #b08350 55%, #96693c);
+}
+
+.material-card__swatch--veneer {
+  background:
+    repeating-linear-gradient(96deg, rgba(0, 0, 0, 0.06) 0 1px, transparent 1px 6px),
+    linear-gradient(120deg, #9a6f4a, #7a5335 50%, #a97d55);
+}
+
+.material-card__swatch--finish {
+  background:
+    radial-gradient(120% 120% at 20% 15%, rgba(255, 255, 255, 0.35), transparent 55%),
+    linear-gradient(135deg, #d8c8a8, #b39a72 60%, #8d7554);
+}
+
+.material-card h3 { margin: 0; font-size: 1.15rem; }
+.material-card p { margin: 0; color: var(--ink-soft); font-size: 0.94rem; }
+
+.material-card__meta {
+  color: var(--gold-3);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.materials__note {
+  margin: 24px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* ════ 15.د الأسئلة الشائعة ════ */
+.faq__inner {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: clamp(24px, 4vw, 60px);
+  align-items: start;
+}
+
+.faq__head .section-sub { margin: 14px 0 0; color: var(--ink-soft); }
+
+.faq__list { display: grid; gap: 10px; }
+
+.faq-item {
+  padding: 4px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-field);
+  background: var(--panel);
+}
+
+.faq-item summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 0;
+  cursor: pointer;
+  font-weight: 800;
+  list-style: none;
+}
+
+.faq-item summary::-webkit-details-marker { display: none; }
+
+.faq-item summary::after {
+  content: "+";
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border: 1px solid rgba(191, 141, 66, 0.5);
+  border-radius: 50%;
+  color: var(--gold-3);
+  font-weight: 700;
+  transition: transform var(--transition);
+}
+
+.faq-item[open] summary::after { transform: rotate(45deg); }
+
+.faq-item p {
+  margin: 0 0 16px;
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+}
+
 /* ════ 16. الفوتر ════ */
 .footer {
   position: relative;
@@ -1683,6 +1970,12 @@ textarea:focus-visible {
   .fb__idbar { flex-wrap: wrap; }
   .fb__actions { width: 100%; margin-inline-start: 0; }
 
+  .ideas__grid,
+  .materials__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  .materials__head { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .faq__inner { grid-template-columns: 1fr; gap: 26px; }
+
   .footer__inner { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .footer__brand { grid-column: 1 / -1; }
 }
@@ -1710,6 +2003,18 @@ textarea:focus-visible {
   .gallery__grid, .gallery__grid--curated { grid-template-columns: 1fr; grid-auto-rows: auto; }
   .gallery__grid--curated .tile--feature,
   .gallery__grid--curated .tile--side { grid-column: auto; min-height: clamp(250px, 74vw, 360px); }
+
+  .gallery__toolbar { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .gallery-filters {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    width: 100%;
+    padding-bottom: 4px;
+  }
+  .gallery-filter { flex: none; }
+
+  .ideas__grid,
+  .materials__grid { grid-template-columns: 1fr; }
 
   .customer-reviews__head { align-items: flex-start; flex-direction: column; gap: 12px; }
   .customer-reviews__grid, .customer-reviews__form { grid-template-columns: 1fr; }

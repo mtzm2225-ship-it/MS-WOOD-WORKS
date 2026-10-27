@@ -61,6 +61,7 @@
           <li><a href="#home" class="nav__link is-active">الرئيسية</a></li>
           <li><a href="#services" class="nav__link">الخدمات</a></li>
           <li><a href="#gallery" class="nav__link">المعرض</a></li>
+          <li><a href="#ideas" class="nav__link">أفكار المشاريع</a></li>
           <li><a href="#workshop" class="nav__link">الورشة</a></li>
           <li><a href="#contact" class="nav__link">تواصل</a></li>
           <li><button class="nav__link nav__login" id="customerAccountOpen" type="button">دخول العملاء</button></li>
@@ -153,6 +154,10 @@
         </div>
         <p class="section-sub">هذه الصور تصوّرات تصميمية للهوية والمنتجات؛ تحدّث معنا عن تنفيذ قطعة تناسب مساحتك.</p>
       </header>
+      <div class="gallery__toolbar">
+        <div class="gallery-filters" id="galleryFilters" role="group" aria-label="تصفية النماذج حسب النوع"></div>
+        <p class="gallery__count" id="galleryCount" role="status" aria-live="polite"></p>
+      </div>
       <div class="gallery__grid" id="galleryGrid" aria-label="نماذج من أعمال MS Woodworks"></div>
       <div class="gallery__cta">
         <a href="#contact" class="btn btn--dark btn--lg">أرسل تفاصيل مشروعك</a>
@@ -191,6 +196,77 @@
           <p class="customer-reviews__note" id="customerReviewNote" role="status" aria-live="polite"></p>
         </form>
       </section>
+    </div>
+  </section>
+
+  <!-- أفكار مشاريع: كل فكرة تجهّز بداية نص في نموذج التواصل. -->
+  <section class="ideas section" id="ideas">
+    <div class="container">
+      <header class="section-head">
+        <p class="section-tag">أفكار جاهزة للبدء</p>
+        <h2 class="section-title">اختر فكرة <em>ونكمل التفاصيل معك</em></h2>
+        <p class="section-sub">اضغط على الفكرة الأقرب لاحتياجك، وسنجهّز لك بداية الطلب في نموذج التواصل لتعدّلها قبل الإرسال.</p>
+      </header>
+
+      <div class="ideas__grid">
+        <article class="idea-card reveal" data-delay="1">
+          <span class="idea-card__num">01</span>
+          <h3>غرفة نوم متكاملة</h3>
+          <p>سرير ووحدة تخزين ووحدات جانبية بنفس الخامة والتشطيب، متناسقة مع مساحة الغرفة.</p>
+          <ul class="idea-card__tags">
+            <li>سرير</li><li>دولاب</li><li>وحدات جانبية</li>
+          </ul>
+          <button
+            class="idea-card__cta"
+            type="button"
+            data-idea-message="أريد غرفة نوم متكاملة (سرير + دولاب + وحدات جانبية). مقاس الغرفة التقريبي: … الخامة المفضلة: … التشطيب المطلوب: …"
+          >ابدأ من هذه الفكرة <span aria-hidden="true">←</span></button>
+        </article>
+
+        <article class="idea-card reveal" data-delay="2">
+          <span class="idea-card__num">02</span>
+          <h3>طاولة طعام عائلية</h3>
+          <p>طاولة تكفي اجتماعات العائلة اليومية، بمقاس يناسب غرفة الطعام وحركة المرور حولها.</p>
+          <ul class="idea-card__tags">
+            <li>طاولة</li><li>كراسي</li><li>سطح متين</li>
+          </ul>
+          <button
+            class="idea-card__cta"
+            type="button"
+            data-idea-message="أريد طاولة طعام خشبية. عدد الأفراد: … المقاس التقريبي: … الخامة المفضلة: …"
+          >ابدأ من هذه الفكرة <span aria-hidden="true">←</span></button>
+        </article>
+
+        <article class="idea-card reveal" data-delay="3">
+          <span class="idea-card__num">03</span>
+          <h3>مكتب للعمل من المنزل</h3>
+          <p>سطح عمل مريح مع أدراج وأرفف للتنظيم، يناسب غرفة صغيرة أو ركنًا داخل المساحة.</p>
+          <ul class="idea-card__tags">
+            <li>مكتب</li><li>أدراج</li><li>أرفف</li>
+          </ul>
+          <button
+            class="idea-card__cta"
+            type="button"
+            data-idea-message="أريد مكتبًا خشبيًا للعمل من المنزل. المساحة المتاحة: … المقاس التقريبي: … أحتاج أدراج أو أرفف: …"
+          >ابدأ من هذه الفكرة <span aria-hidden="true">←</span></button>
+        </article>
+
+        <article class="idea-card reveal" data-delay="4">
+          <span class="idea-card__num">04</span>
+          <h3>وحدة تخزين جدارية</h3>
+          <p>استغلال الحائط بتخزين عملي وأرفف عرض تُنظّم الكتب والتلفاز وتفاصيل الديكور.</p>
+          <ul class="idea-card__tags">
+            <li>مكتبة</li><li>تلفاز</li><li>أرفف عرض</li>
+          </ul>
+          <button
+            class="idea-card__cta"
+            type="button"
+            data-idea-message="أريد وحدة تخزين جدارية. المقاس التقريبي (طول × ارتفاع): … الاستخدام: كتب / تلفاز / ديكور …"
+          >ابدأ من هذه الفكرة <span aria-hidden="true">←</span></button>
+        </article>
+      </div>
+
+      <p class="ideas__note">لا تحتاج كل التفاصيل الآن؛ اكتب ما تعرفه ونكمل الباقي معك في أول تواصل.</p>
     </div>
   </section>
 
@@ -263,6 +339,51 @@
     </div>
   </section>
 
+  <!-- الخامات والتشطيبات -->
+  <section class="materials section" id="materials">
+    <div class="container">
+      <header class="materials__head">
+        <div>
+          <p class="section-tag">الخامات والتشطيبات</p>
+          <h2 class="section-title">الخامة الصحيحة <em>تصنع الفرق</em></h2>
+        </div>
+        <p class="section-sub">نستعرض معك الخيارات المتاحة قبل التنفيذ، ونوضح فرق الملمس واللون وطريقة العناية بكل خامة.</p>
+      </header>
+
+      <div class="materials__grid">
+        <article class="material-card reveal" data-delay="1">
+          <span class="material-card__swatch material-card__swatch--walnut" aria-hidden="true"></span>
+          <h3>جوز داكن</h3>
+          <p>لون عميق وحبيبة غنية يليق بالمكاتب والمداخل والقطع التي تحمل حضورًا في المساحة.</p>
+          <span class="material-card__meta">ملمس دافئ · عناية دورية</span>
+        </article>
+
+        <article class="material-card reveal" data-delay="2">
+          <span class="material-card__swatch material-card__swatch--oak" aria-hidden="true"></span>
+          <h3>بلوط وزان</h3>
+          <p>درجة أفتح وأكثر هدوءًا، خيار عملي لغرف النوم والطاولات التي تحتاج إحساسًا طبيعيًا.</p>
+          <span class="material-card__meta">حبيبة واضحة · تتحمل الاستخدام اليومي</span>
+        </article>
+
+        <article class="material-card reveal" data-delay="3">
+          <span class="material-card__swatch material-card__swatch--veneer" aria-hidden="true"></span>
+          <h3>قشرة طبيعية</h3>
+          <p>طبقة خشب حقيقية على أسطح مستقرة، تمنح مظهر الخشب الكامل للوحدات الكبيرة.</p>
+          <span class="material-card__meta">مظهر طبيعي · ثبات في الأبعاد</span>
+        </article>
+
+        <article class="material-card reveal" data-delay="4">
+          <span class="material-card__swatch material-card__swatch--finish" aria-hidden="true"></span>
+          <h3>تشطيبات حماية</h3>
+          <p>زيوت وأرواح وورنيش مات تحفظ ملمس الخشب وتحميه من الاستخدام اليومي.</p>
+          <span class="material-card__meta">ملمس طبيعي · مقاومة للبقع</span>
+        </article>
+      </div>
+
+      <p class="materials__note">تتوفر خيارات أخرى حسب القطعة والميزانية؛ نناقشها معك في مرحلة العرض قبل التنفيذ.</p>
+    </div>
+  </section>
+
 
   <!-- ══════════ WHY US ══════════ -->
   <section class="values section">
@@ -303,6 +424,40 @@
     </div>
   </section>
 
+  <!-- الأسئلة الشائعة -->
+  <section class="faq section" id="faq">
+    <div class="container faq__inner">
+      <header class="faq__head">
+        <p class="section-tag">أسئلة متكررة</p>
+        <h2 class="section-title">قبل أن <em>تبدأ مشروعك</em></h2>
+        <p class="section-sub">أكثر ما يسألنا عنه العملاء قبل الاتفاق على التنفيذ.</p>
+      </header>
+
+      <div class="faq__list">
+        <details class="faq-item reveal">
+          <summary>كيف يتم تحديد السعر؟</summary>
+          <p>نحدد السعر بعد معرفة المقاسات ونوع الخشب والتشطيب المطلوب، ونرسل عرضًا واضحًا قبل بدء التنفيذ.</p>
+        </details>
+        <details class="faq-item reveal">
+          <summary>كم تستغرق مدة التنفيذ؟</summary>
+          <p>تختلف حسب حجم القطعة وتوافر الخامة؛ نذكر المدة المتوقعة في العرض ونبلغك بأي تغيير يطرأ عليها.</p>
+        </details>
+        <details class="faq-item reveal">
+          <summary>هل تقومون بالتركيب؟</summary>
+          <p>نناقش احتياج التركيب حسب نوع القطعة والموقع، ونوضح ما يشمله التنفيذ قبل التسليم.</p>
+        </details>
+        <details class="faq-item reveal">
+          <summary>هل يمكن تعديل المقاس بعد الاتفاق؟</summary>
+          <p>نراجع أي تعديل قبل بدء التصنيع. التعديلات بعد قص الخامة قد تؤثر في المدة أو التكلفة، ونوضح ذلك وقتها.</p>
+        </details>
+        <details class="faq-item reveal">
+          <summary>هل تعملون خارج المدينة؟</summary>
+          <p>نناقش نطاق التنفيذ والتوصيل حسب الموقع مع كل طلب، ونحدد التفاصيل قبل تأكيد المشروع.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
 
 
   <dialog class="gallery-details" id="galleryDetails" aria-labelledby="galleryDetailsTitle">
@@ -313,6 +468,11 @@
         <p class="section-tag" id="galleryDetailsCategory"></p>
         <h2 id="galleryDetailsTitle"></h2>
         <p id="galleryDetailsDescription"></p>
+        <div class="gallery-details__nav">
+          <button class="gallery-details__arrow" id="galleryPrev" type="button" aria-label="النموذج السابق">→</button>
+          <span class="gallery-details__counter" id="galleryCounter" dir="ltr" aria-live="polite"></span>
+          <button class="gallery-details__arrow" id="galleryNext" type="button" aria-label="النموذج التالي">←</button>
+        </div>
         <a href="#contact" class="btn btn--gold" id="galleryDetailsEnquire">ناقش نموذجًا مشابهًا</a>
       </div>
     </div>
@@ -502,6 +662,9 @@
             <li><a href="#home">الرئيسية</a></li>
             <li><a href="#services">الخدمات</a></li>
             <li><a href="#gallery">معرض الأعمال</a></li>
+            <li><a href="#ideas">أفكار المشاريع</a></li>
+            <li><a href="#materials">الخامات والتشطيبات</a></li>
+            <li><a href="#faq">الأسئلة الشائعة</a></li>
             <li><a href="#workshop">من نحن</a></li>
             <li><a href="#contact">اطلب تصميمًا</a></li>
           </ul>
