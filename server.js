@@ -9,11 +9,12 @@ const path = require('node:path');
 const express = require('express');
 const session = require('express-session');
 const connectPgSimple = require('connect-pg-simple');
-const { Pool } = require('pg');
+const { Pool, types } = require('pg');
 const bcrypt = require('bcryptjs');
 const helmet = require('helmet');
 const { rateLimit } = require('express-rate-limit');
 const createFinanceRouter = require('./routes/finance');
+const { byId: galleryAssetsById } = require('./public/gallery-assets.js');
 
 const app = express();
 const publicDir = path.join(__dirname, 'public');
@@ -49,6 +50,9 @@ if (!ownerPassword.trim() || ownerPassword.length < 14) {
 // ينهي Vercel اتصال HTTPS عند الوكيل؛ نثق به حتى تعمل ملفات الجلسة الآمنة.
 if (isProduction) app.set('trust proxy', 1);
 
+// نُرجع أعمدة DATE كنص YYYY-MM-DD بدل كائن Date، حتى لا تتحول إلى تاريخ/وقت ISO وتُربك الواجهة.
+types.setTypeParser(types.builtins.DATE, (value) => value);
+
 const pool = new Pool({
   ...(databaseUrl
     ? { connectionString: databaseUrl }
@@ -59,7 +63,14 @@ const pool = new Pool({
         user: pgUser,
         password: pgPassword
       }),
-  ssl: process.env.PGSSL === 'true' ? { rejectUnauthorized: true } : undefined
+  ssl: process.env.PGSSL === 'true' ? { rejectUnauthorized: true } : undefined,
+  // Vercel يشغّل عدة نسخ من الدالة؛ نُبقي كل نسخة على اتصالات قليلة حتى لا نستنزف قاعدة البيانات.
+  max: 3,
+  idleTimeoutMillis: 5000,
+  connectionTimeoutMillis: 5000,
+  allowExitOnIdle: true,
+  statement_timeout: 15000,
+  application_name: 'mswood'
 });
 
 const PostgreSQLStore = connectPgSimple(session);
@@ -76,6 +87,8 @@ function ensureDatabaseSchema() {
   // نشارك تهيئة قاعدة البيانات بين الطلبات المتزامنة ونعيد المحاولة إذا فشلت.
   if (!schemaPromise) {
     schemaPromise = pool.query(`
+      -- قفل استشاري يمنع تعارض إنشاء الجداول عند بدء عدة نسخ من الدالة معًا.
+      SELECT pg_advisory_xact_lock(727272);
       CREATE TABLE IF NOT EXISTS customers (
         id BIGSERIAL PRIMARY KEY,
         name VARCHAR(100) NOT NULL,
@@ -261,7 +274,13 @@ app.use(session({
   }
 }));
 
-const loginLimiter = rateLimit({
+const adminLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 8,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false
+});
+const ownerLoginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 8,
   standardHeaders: 'draft-7',
@@ -345,7 +364,7 @@ function cleanText(value, maxLength) {
 }
 
 function validGalleryId(value) {
-  return /^[a-z0-9-]{1,80}$/.test(value);
+  return typeof value === 'string' && Object.hasOwn(galleryAssetsById, value);
 }
 
 function validDate(value) {
@@ -367,12 +386,19 @@ function validClock(value) {
 }
 
 function validMoney(value, { allowZero = false } = {}) {
-  const amount = typeof value === 'number' ? value : Number(value);
-  return Number.isFinite(amount) && (allowZero ? amount >= 0 : amount > 0) && amount <= 100000000;
+  // نقبل الأرقام أو النصوص الرقمية بحد أقصى منزلتين عشريتين؛ لا نقبل '' أو true أو NaN.
+  let amount;
+  if (typeof value === 'number') amount = value;
+  else if (typeof value === 'string' && /^\d{1,9}(?:\.\d{1,2})?$/.test(value)) amount = Number(value);
+  else return false;
+  return Number.isFinite(amount)
+    && Number(amount.toFixed(2)) === amount
+    && (allowZero ? amount >= 0 : amount > 0)
+    && amount <= 100000000;
 }
 
 function validCurrencyAmount(value) {
-  return validMoney(value) && /^\d+(?:\.\d{1,2})?$/.test(String(value));
+  return validMoney(value);
 }
 
 function validRecordId(value) {
@@ -383,6 +409,14 @@ function validEmail(value) {
   return typeof value === 'string' && value.length <= 254
     && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
+
+/**
+ * لا نخزّن بيانات الإدارة أو المالك في ذاكرة المتصفح أو أي وسيط.
+ */
+app.use(['/api/admin', '/api/owner'], (req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+});
 
 /**
  * واجهات الأموال (Custodies / Expenses / Collections / Projects) — محمية للمالك فقط.
@@ -595,7 +629,7 @@ app.get('/api/customer/orders', requireCustomer, async (req, res, next) => {
 /**
  * واجهات مصادقة الإدارة (Admin Login / Session / Logout) — دخول administrator وإدارة الجلسة.
  */
-app.post('/api/admin/login', loginLimiter, async (req, res, next) => {
+app.post('/api/admin/login', adminLoginLimiter, async (req, res, next) => {
   try {
     const email = cleanText(req.body.email, 254).toLowerCase();
     const password = typeof req.body.password === 'string' ? req.body.password : '';
@@ -629,7 +663,7 @@ app.post('/api/admin/logout', requireAdminOrOwner, (req, res, next) => {
 /**
  * واجهات مصادقة المالك (Owner Login / Session / Logout) — تسجيل دخول منفصل لقفل قسم العاملين (HR) فقط.
  */
-app.post('/api/owner/login', loginLimiter, async (req, res, next) => {
+app.post('/api/owner/login', ownerLoginLimiter, async (req, res, next) => {
   try {
     const username = cleanText(req.body.username, 80);
     const password = typeof req.body.password === 'string' ? req.body.password : '';
@@ -694,7 +728,10 @@ app.get('/api/admin/orders', requireAdmin, async (req, res, next) => {
   try {
     const status = cleanText(req.query.status, 30);
     const allowed = ['new', 'contacted', 'in-progress', 'completed', 'cancelled'];
-    const result = status && allowed.includes(status)
+    if (status && !allowed.includes(status)) {
+      return res.status(400).json({ error: 'حالة الطلب المطلوبة غير صالحة.' });
+    }
+    const result = status
       ? await pool.query('SELECT id, name, phone, message, status, created_at FROM orders WHERE status = $1 ORDER BY created_at DESC LIMIT 500', [status])
       : await pool.query('SELECT id, name, phone, message, status, created_at FROM orders ORDER BY created_at DESC LIMIT 500');
     res.json(result.rows);
@@ -705,6 +742,7 @@ app.get('/api/admin/orders', requireAdmin, async (req, res, next) => {
 
 app.patch('/api/admin/orders/:id', requireAdmin, async (req, res, next) => {
   try {
+    if (!validRecordId(req.params.id)) return res.status(400).json({ error: 'معرّف الطلب غير صالح.' });
     const status = cleanText(req.body.status, 30);
     const allowed = ['new', 'contacted', 'in-progress', 'completed', 'cancelled'];
     if (!allowed.includes(status)) return res.status(400).json({ error: 'حالة الطلب غير صالحة.' });
@@ -723,7 +761,10 @@ app.get('/api/admin/comments', requireAdmin, async (req, res, next) => {
   try {
     const status = cleanText(req.query.status, 30);
     const allowed = ['pending', 'approved', 'rejected'];
-    const result = status && allowed.includes(status)
+    if (status && !allowed.includes(status)) {
+      return res.status(400).json({ error: 'حالة التعليق المطلوبة غير صالحة.' });
+    }
+    const result = status
       ? await pool.query('SELECT id, gallery_id, name, body, status, created_at FROM comments WHERE status = $1 ORDER BY created_at DESC LIMIT 500', [status])
       : await pool.query('SELECT id, gallery_id, name, body, status, created_at FROM comments ORDER BY created_at DESC LIMIT 500');
     res.json(result.rows);
@@ -734,6 +775,7 @@ app.get('/api/admin/comments', requireAdmin, async (req, res, next) => {
 
 app.patch('/api/admin/comments/:id', requireAdmin, async (req, res, next) => {
   try {
+    if (!validRecordId(req.params.id)) return res.status(400).json({ error: 'معرّف التعليق غير صالح.' });
     const status = cleanText(req.body.status, 30);
     if (!['approved', 'rejected'].includes(status)) {
       return res.status(400).json({ error: 'حالة التعليق غير صالحة.' });
@@ -959,11 +1001,11 @@ app.post('/api/admin/hr/advances', requireOwner, async (req, res, next) => {
     }
     const result = await pool.query(
       `INSERT INTO worker_advances (worker_id, advance_date, amount, note)
-       SELECT w.id, $2, $3, $4 FROM workers w WHERE w.id = $1
+       SELECT w.id, $2, $3, $4 FROM workers w WHERE w.id = $1 AND w.active = TRUE
        RETURNING id, worker_id, advance_date, amount, note`,
       [workerId, advanceDate, amount, note]
     );
-    if (!result.rowCount) return res.status(404).json({ error: 'العامل غير موجود.' });
+    if (!result.rowCount) return res.status(404).json({ error: 'العامل غير موجود أو موقوف.' });
     res.status(201).json(result.rows[0]);
   } catch (error) {
     next(error);
@@ -1007,11 +1049,28 @@ app.get('/ms.js', (req, res) => res.sendFile(path.join(publicDir, 'ms.js')));
 app.get('/admin.css', (req, res) => res.sendFile(path.join(publicDir, 'admin.css')));
 app.get('/admin.js', (req, res) => res.sendFile(path.join(publicDir, 'admin.js')));
 app.get('/gallery-assets.js', (req, res) => res.sendFile(path.join(publicDir, 'gallery-assets.js')));
+app.get('/robots.txt', (req, res) => res.sendFile(path.join(publicDir, 'robots.txt')));
+app.get('/sitemap.xml', (req, res) => res.sendFile(path.join(publicDir, 'sitemap.xml')));
 app.use('/img', express.static(path.join(publicDir, 'img'), { maxAge: isProduction ? '1d' : 0 }));
+
+// أي مسار API غير معروف يرجع JSON واضحًا بدل صفحة HTML.
+app.use('/api', (req, res) => {
+  res.status(404).json({ error: 'المسار المطلوب غير موجود.' });
+});
 
 app.use((error, req, res, next) => {
   console.error(error);
   if (res.headersSent) return next(error);
+  if (error.type === 'entity.parse.failed') {
+    return res.status(400).json({ error: 'صيغة الطلب غير صالحة.' });
+  }
+  if (error.type === 'entity.too.large' || error.status === 413) {
+    return res.status(413).json({ error: 'حجم الطلب أكبر من المسموح.' });
+  }
+  const status = Number(error.status || error.statusCode);
+  if (status >= 400 && status < 500) {
+    return res.status(400).json({ error: 'الطلب غير صالح.' });
+  }
   res.status(500).json({ error: 'حدث خطأ داخلي. حاول مرة أخرى لاحقًا.' });
 });
 

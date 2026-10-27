@@ -48,7 +48,7 @@ class TestPool {
   async query(sql, values = []) {
     // Return predictable rows for the SQL statements used by the API.
     const query = sql.replace(/\s+/g, ' ').trim();
-    if (query.startsWith('CREATE TABLE') || query.startsWith('CREATE INDEX')) {
+    if (query.includes('CREATE TABLE IF NOT EXISTS customers')) {
       return { rows: [], rowCount: 0 };
     }
     if (query.startsWith('WITH new_custody AS')) {
@@ -524,7 +524,12 @@ class TestSessionStore extends session.Store {
 
 const originalLoad = Module._load;
 Module._load = function loadWithTestServices(request, parent, isMain) {
-  if (request === 'pg') return { Pool: TestPool };
+  if (request === 'pg') {
+    return {
+      Pool: TestPool,
+      types: { builtins: { DATE: 1082 }, setTypeParser() {} }
+    };
+  }
   if (request === 'connect-pg-simple') return () => TestSessionStore;
   return originalLoad.call(this, request, parent, isMain);
 };
@@ -558,6 +563,8 @@ test('serves the website, admin dashboard, and assets', async () => {
   assert.equal(home.status, 200);
   const homePage = await home.text();
   assert.match(homePage, /MS Woodworks/);
+  assert.match(homePage, /rel="canonical"/);
+  assert.doesNotMatch(homePage, /src=""/);
 
   for (const route of ['/admin', '/admin.html']) {
     const admin = await request(route);
@@ -569,6 +576,7 @@ test('serves the website, admin dashboard, and assets', async () => {
     assert.match(adminPage, /data-view="ownerMoneyView"/);
     assert.match(adminPage, /data-owner-money-view="expensesView"/);
     assert.match(adminPage, /data-owner-money-view="collectionsView"/);
+    assert.match(adminPage, /id="projectCancel"/);
   }
 
   assert.match(homePage, /id="customerAccountOpen"/);
@@ -612,6 +620,13 @@ test('validates and stores public orders and comments', async () => {
     body: JSON.stringify({ galleryId: 'walnut-desk', name: 'عميل تجريبي', body: 'تعليق للاختبار' })
   });
   assert.equal(validComment.status, 201);
+
+  const unknownComment = await request('/api/comments', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ galleryId: 'studio-desk', name: 'عميل تجريبي', body: 'تعليق لصورة غير موجودة' })
+  });
+  assert.equal(unknownComment.status, 400);
 
   const publicComments = await request('/api/comments/walnut-desk');
   assert.equal(publicComments.status, 200);
@@ -791,6 +806,33 @@ test('protects admin data and supports dashboard sign-in and updates', async () 
   });
   assert.equal(updateComment.status, 200);
   assert.equal((await updateComment.json()).status, 'rejected');
+
+  const invalidStatusFilter = await request('/api/admin/orders?status=unknown', {
+    headers: { Cookie: adminCookie }
+  });
+  assert.equal(invalidStatusFilter.status, 400);
+
+  const invalidOrderId = await request('/api/admin/orders/not-a-number', {
+    method: 'PATCH',
+    headers: { Cookie: adminCookie, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status: 'new' })
+  });
+  assert.equal(invalidOrderId.status, 400);
+
+  assert.equal(dashboard.headers.get('cache-control'), 'no-store');
+});
+
+test('returns JSON errors for unknown API routes and malformed payloads', async () => {
+  const missing = await request('/api/does-not-exist');
+  assert.equal(missing.status, 404);
+  assert.match(missing.headers.get('content-type'), /application\/json/);
+
+  const malformed = await request('/api/orders', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{"name": '
+  });
+  assert.equal(malformed.status, 400);
 });
 
 test('manages worker categories, attendance, advances, and monthly payroll', async () => {

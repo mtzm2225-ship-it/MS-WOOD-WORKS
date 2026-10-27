@@ -435,13 +435,17 @@
               <h3 id="createProjectTitle">تسجيل شغل متفق عليه</h3>
               <p class="muted">اربط طلب العميل بالمشروع وسجّل قيمة الاتفاق؛ أضف الدفعات على مراحل واحسب المتبقي تلقائيًا.</p>
               <form id="projectForm" class="hr-form">
+                <input id="projectId" name="projectId" type="hidden" />
                 <label for="projectOrder">طلب العميل</label>
                 <select id="projectOrder" name="orderId" required></select>
                 <label for="projectName">وصف الشغل</label>
                 <input id="projectName" name="name" maxlength="200" required />
                 <label for="projectAgreedAmount">قيمة الاتفاق (جنيه)</label>
                 <input id="projectAgreedAmount" name="agreedAmount" type="number" min="0.01" max="100000000" step="0.01" required />
-                <button class="button button--primary" type="submit">تسجيل المشروع</button>
+                <div class="hr-form-actions">
+                  <button class="button button--primary" type="submit" id="projectSubmit">تسجيل المشروع</button>
+                  <button class="button button--quiet" type="button" id="projectCancel" hidden>إلغاء التعديل</button>
+                </div>
               </form>
             </section>
 
@@ -492,7 +496,7 @@
             <h3 id="projectsListTitle">المشاريع والأرصدة</h3>
             <div class="payroll-table-wrap">
               <table class="payroll-table">
-                <thead><tr><th>المشروع</th><th>العميل</th><th>قيمة الاتفاق</th><th>المحصل</th><th>المتبقي / الزيادة</th></tr></thead>
+                <thead><tr><th>المشروع</th><th>العميل</th><th>قيمة الاتفاق</th><th>المحصل</th><th>المتبقي / الزيادة</th><th>إجراءات</th></tr></thead>
                 <tbody id="collectionProjectsList"></tbody>
               </table>
             </div>

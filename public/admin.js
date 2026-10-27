@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
     present: 'حاضر',
     absent: 'غائب'
   };
-  const galleryAssets = window.MSWoodGalleryAssets.byId;
+  const galleryAssets = (window.MSWoodGalleryAssets && window.MSWoodGalleryAssets.byId) || {};
   let hrCategories = [];
   let hrWorkers = [];
   let attendanceRecords = [];
@@ -57,19 +57,37 @@ document.addEventListener('DOMContentLoaded', () => {
   const formatTime = (value) => typeof value === 'string' ? value.slice(0, 5) : '';
   const formatPlainDate = (value) => new Date(`${String(value).slice(0, 10)}T00:00:00`);
 
+  function setStatus(node, text, tone = 'error') {
+    if (!node) return;
+    node.textContent = text;
+    node.classList.toggle('is-success', tone === 'success');
+    node.classList.toggle('is-error', tone === 'error');
+  }
+
   async function api(url, options = {}) {
     // تبقى الطلبات على النطاق نفسه كي يرسل المتصفح ملف جلسة الإدارة الآمن.
-    const response = await fetch(url, {
-      credentials: 'same-origin',
-      ...options,
-      headers: { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...options.headers }
-    });
+    let response;
+    try {
+      response = await fetch(url, {
+        credentials: 'same-origin',
+        ...options,
+        headers: { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...options.headers }
+      });
+    } catch {
+      throw new Error('تعذر الاتصال بالخادم. تحقق من اتصال الشبكة وحاول مرة أخرى.');
+    }
     if (response.status === 204) return null;
     const result = await response.json().catch(() => ({}));
     const ownerOnlyEndpoint = /^\/api\/admin\/(?:hr\/|custodies(?:\/|\?|$)|expenses(?:\/|\?|$)|collections(?:\/|\?|$)|projects(?:\/|\?|$))/.test(url);
     if (response.status === 403 && ownerOnlyEndpoint) {
       selectDashboardView('ordersView');
       showOwnerLogin(true);
+    }
+    if (response.status === 401 && !/\/login$/.test(url)) {
+      // انتهت الجلسة أثناء العمل: نعيد المستخدم لشاشة الدخول برسالة واضحة.
+      hideOwnerLogin();
+      showSignedIn(false);
+      setStatus(loginMessage, 'انتهت الجلسة أو لم تعد صالحة. سجّل الدخول من جديد.');
     }
     if (!response.ok) throw new Error(result.error || 'تعذر إكمال الطلب.');
     return result;
@@ -149,7 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function hideOwnerLogin() {
     ownerLoginPanel.hidden = true;
-    ownerLoginMessage.textContent = '';
+    setStatus(ownerLoginMessage, '');
     ownerLoginForm.reset();
   }
 
@@ -348,35 +366,35 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function loadCustomers() {
-    customersMessage.textContent = '';
+    setStatus(customersMessage, '');
     customersList.setAttribute('aria-busy', 'true');
     customersList.replaceChildren(element('p', 'loading-state', 'جار تحميل حسابات العملاء…'));
     try {
       renderCustomers(await api('/api/admin/customers'));
     } catch (error) {
-      customersMessage.textContent = error.message;
+      setStatus(customersMessage, error.message);
     } finally {
       customersList.setAttribute('aria-busy', 'false');
     }
   }
 
   async function updateComment(id, status, actionButton) {
-    commentsMessage.textContent = '';
+    setStatus(commentsMessage, '');
     actionButton.disabled = true;
     actionButton.textContent = status === 'approved' ? 'جار الاعتماد…' : 'جار الرفض…';
     try {
       await api(`/api/admin/comments/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) });
     } catch (error) {
-      commentsMessage.textContent = `تعذر تحديث التعليق. ${error.message}`;
+      setStatus(commentsMessage, `تعذر تحديث التعليق. ${error.message}`);
       actionButton.disabled = false;
       actionButton.textContent = status === 'approved' ? 'اعتماد ونشر' : 'رفض';
       return;
     }
 
-    commentsMessage.textContent = status === 'approved' ? 'تم اعتماد التعليق ونشره.' : 'تم رفض التعليق.';
+    setStatus(commentsMessage, status === 'approved' ? 'تم اعتماد التعليق ونشره.' : 'تم رفض التعليق.', 'success');
     const refreshResults = await Promise.allSettled([loadComments(), loadSummary()]);
     if (refreshResults.some((result) => result.status === 'rejected')) {
-      commentsMessage.textContent += ' تعذر تحديث العرض؛ أعد تحميل القائمة.';
+      setStatus(commentsMessage, `${commentsMessage.textContent} تعذر تحديث العرض؛ أعد تحميل القائمة.`);
     }
   }
 
@@ -443,7 +461,7 @@ document.addEventListener('DOMContentLoaded', () => {
             method: 'PATCH',
             body: JSON.stringify({ name: name.value })
           });
-          document.getElementById('categoriesMessage').textContent = 'تم تحديث اسم الفئة.';
+          setStatus(document.getElementById('categoriesMessage'), 'تم تحديث اسم الفئة.', 'success');
           await loadHrData();
         } catch (error) {
           document.getElementById('categoriesMessage').textContent = error.message;
@@ -754,27 +772,30 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const query = new URLSearchParams({ from, to });
       renderExpenseReport(await api(`/api/admin/expenses?${query}`));
+    } catch (error) {
+      list.replaceChildren(element('p', 'empty-state', `تعذر تحميل مصروفات الفترة: ${error.message}`));
+      throw error;
     } finally {
       list.setAttribute('aria-busy', 'false');
     }
   }
 
   async function refreshExpenseReportAfterSave(message, successMessage) {
-    message.textContent = successMessage;
+    setStatus(message, successMessage, 'success');
     try {
       await loadExpenses();
     } catch (error) {
-      message.textContent = `${successMessage} تعذر تحديث التقرير: ${error.message}`;
+      setStatus(message, `${successMessage} تعذر تحديث التقرير: ${error.message}`);
     }
   }
 
   async function loadExpensesDashboard() {
     const message = document.getElementById('expensesMessage');
-    message.textContent = '';
+    setStatus(message, '');
     try {
       await loadExpenses();
     } catch (error) {
-      message.textContent = error.message;
+      setStatus(message, error.message);
     }
   }
 
@@ -792,6 +813,33 @@ document.addEventListener('DOMContentLoaded', () => {
       option.selected = String(order.id) === selected;
       select.append(option);
     });
+  }
+
+  function beginProjectEdit(project) {
+    const orderSelect = document.getElementById('projectOrder');
+    if (![...orderSelect.options].some((option) => String(option.value) === String(project.order_id))) {
+      const option = element('option', '', `${project.customer_name} · ${project.phone} · طلب ${project.order_id}`);
+      option.value = project.order_id;
+      orderSelect.append(option);
+    }
+    orderSelect.value = project.order_id;
+    orderSelect.disabled = true;
+    document.getElementById('projectId').value = project.id;
+    document.getElementById('projectName').value = project.name;
+    document.getElementById('projectAgreedAmount').value = project.agreed_amount;
+    document.getElementById('createProjectTitle').textContent = 'تعديل مشروع';
+    document.getElementById('projectSubmit').textContent = 'حفظ تعديل المشروع';
+    document.getElementById('projectCancel').hidden = false;
+    document.getElementById('projectForm').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function resetProjectForm() {
+    document.getElementById('projectForm').reset();
+    document.getElementById('projectId').value = '';
+    document.getElementById('projectOrder').disabled = false;
+    document.getElementById('createProjectTitle').textContent = 'تسجيل شغل متفق عليه';
+    document.getElementById('projectSubmit').textContent = 'تسجيل المشروع';
+    document.getElementById('projectCancel').hidden = true;
   }
 
   function renderCollections(report) {
@@ -831,14 +879,20 @@ document.addEventListener('DOMContentLoaded', () => {
       report.projects.forEach((project) => {
         const row = document.createElement('tr');
         const remaining = Number(project.remaining_amount);
+        const edit = element('button', 'button button--quiet', 'تعديل');
+        edit.type = 'button';
+        edit.setAttribute('aria-label', `تعديل مشروع ${project.name}`);
+        edit.addEventListener('click', () => beginProjectEdit(project));
         row.append(
           element('td', '', project.name),
           element('td', '', `${project.customer_name} · ${project.phone}`),
           element('td', '', money(project.agreed_amount)),
           element('td', '', money(project.paid_total)),
           element('td', remaining < 0 ? 'collection-overpaid' : 'payroll-net',
-            remaining < 0 ? `زيادة محصلة ${money(Math.abs(remaining))}` : money(remaining))
+            remaining < 0 ? `زيادة محصلة ${money(Math.abs(remaining))}` : money(remaining)),
+          element('td', '', '')
         );
+        row.lastElementChild.append(edit);
         projectsList.append(row);
       });
     }
@@ -890,44 +944,56 @@ document.addEventListener('DOMContentLoaded', () => {
       const report = await api(`/api/admin/collections?${query}`);
       renderCollections(report);
       return report;
+    } catch (error) {
+      list.replaceChildren(element('p', 'empty-state', `تعذر تحميل التحصيلات: ${error.message}`));
+      throw error;
     } finally {
       list.setAttribute('aria-busy', 'false');
     }
   }
 
   async function refreshCollectionsAfterSave(message, successMessage, projectId = '') {
-    message.textContent = successMessage;
+    setStatus(message, successMessage, 'success');
     try {
       const report = await loadCollections();
       const project = report?.projects.find((item) => String(item.id) === String(projectId));
       if (project && Number(project.remaining_amount) < 0) {
-        message.textContent = `${successMessage} تنبيه: التحصيل تجاوز قيمة الاتفاق بمقدار ${money(Math.abs(project.remaining_amount))}.`;
+        setStatus(message, `${successMessage} تنبيه: التحصيل تجاوز قيمة الاتفاق بمقدار ${money(Math.abs(project.remaining_amount))}.`, 'success');
       }
     } catch (error) {
-      message.textContent = `${successMessage} تعذر تحديث تقرير التحصيلات: ${error.message}`;
+      setStatus(message, `${successMessage} تعذر تحديث تقرير التحصيلات: ${error.message}`);
     }
   }
 
   async function loadCollectionsDashboard() {
     const message = document.getElementById('collectionsMessage');
-    message.textContent = '';
+    setStatus(message, '');
     try {
       await loadCollections();
     } catch (error) {
-      message.textContent = error.message;
+      setStatus(message, error.message);
     }
+  }
+
+  function lockSubmit(form) {
+    const button = form.querySelector('button[type="submit"]');
+    if (!button) return () => {};
+    button.disabled = true;
+    return () => {
+      button.disabled = false;
+    };
   }
 
   async function submitLedgerForm(form, event, action) {
     event.preventDefault();
     const submit = form.querySelector('button[type="submit"]');
     const message = document.getElementById('expensesMessage');
-    message.textContent = '';
+    setStatus(message, '');
     submit.disabled = true;
     try {
       await action(message);
     } catch (error) {
-      message.textContent = error.message;
+      setStatus(message, error.message);
     } finally {
       submit.disabled = false;
     }
@@ -937,12 +1003,12 @@ document.addEventListener('DOMContentLoaded', () => {
     event.preventDefault();
     const submit = form.querySelector('button[type="submit"]');
     const message = document.getElementById('collectionsMessage');
-    message.textContent = '';
+    setStatus(message, '');
     submit.disabled = true;
     try {
       await action(message);
     } catch (error) {
-      message.textContent = error.message;
+      setStatus(message, error.message);
     } finally {
       submit.disabled = false;
     }
@@ -965,7 +1031,12 @@ document.addEventListener('DOMContentLoaded', () => {
       if (editingWorker) document.getElementById('workerCategory').value = editingWorker.category_id;
       else resetWorkerForm();
     }
-    await Promise.all([loadAttendance(), loadAdvances(), loadPayroll()]);
+    // نحمّل كل قسم على حدة حتى لا يمنع فشل قسم واحد عرض الأقسام الأخرى.
+    const sections = await Promise.allSettled([loadAttendance(), loadAdvances(), loadPayroll()]);
+    const messageIds = ['attendanceMessage', 'advancesMessage', 'payrollMessage'];
+    sections.forEach((result, index) => {
+      if (result.status === 'rejected') setStatus(document.getElementById(messageIds[index]), result.reason.message);
+    });
   }
 
   async function loadAttendance() {
@@ -987,29 +1058,36 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function loadHrDashboard() {
-    document.getElementById('categoriesMessage').textContent = '';
-    document.getElementById('workersMessage').textContent = '';
-    document.getElementById('attendanceMessage').textContent = '';
-    document.getElementById('advancesMessage').textContent = '';
-    document.getElementById('payrollMessage').textContent = '';
+    ['categoriesMessage', 'workersMessage', 'attendanceMessage', 'advancesMessage', 'payrollMessage']
+      .forEach((id) => setStatus(document.getElementById(id), ''));
     try {
       await loadHrData();
     } catch (error) {
-      document.getElementById('workersMessage').textContent = error.message;
+      setStatus(document.getElementById('workersMessage'), error.message);
     }
   }
 
+  function showHrError(error) {
+    const view = document.querySelector('.hr-tabs .tab-button.is-active')?.dataset.hrView;
+    const messageId = {
+      attendanceView: 'attendanceMessage',
+      advancesView: 'advancesMessage',
+      payrollView: 'payrollMessage'
+    }[view] || 'workersMessage';
+    setStatus(document.getElementById(messageId), error.message);
+  }
+
   async function loadDashboard() {
-    ordersMessage.textContent = '';
-    commentsMessage.textContent = '';
+    setStatus(ordersMessage, '');
+    setStatus(commentsMessage, '');
     const results = await Promise.allSettled([loadSummary(), loadOrders(), loadComments()]);
     const [summaryResult, ordersResult, commentsResult] = results;
     if (summaryResult.status === 'rejected') {
       document.getElementById('adminSummary').setAttribute('aria-busy', 'false');
       document.getElementById('summaryMessage').textContent = summaryResult.reason.message;
     }
-    if (ordersResult.status === 'rejected') ordersMessage.textContent = ordersResult.reason.message;
-    if (commentsResult.status === 'rejected') commentsMessage.textContent = commentsResult.reason.message;
+    if (ordersResult.status === 'rejected') setStatus(ordersMessage, ordersResult.reason.message);
+    if (commentsResult.status === 'rejected') setStatus(commentsMessage, commentsResult.reason.message);
     if ([summaryResult, ordersResult, commentsResult].some((result) => (
       result.status === 'rejected' && result.reason.message.includes('تسجيل الدخول')
     ))) showSignedIn(false);
@@ -1017,7 +1095,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   loginForm.addEventListener('submit', async (event) => {
     event.preventDefault();
-    loginMessage.textContent = '';
+    setStatus(loginMessage, '');
     const submit = loginForm.querySelector('button[type="submit"]');
     submit.disabled = true;
     const formData = new FormData(loginForm);
@@ -1030,7 +1108,7 @@ document.addEventListener('DOMContentLoaded', () => {
       showSignedIn(true);
       await loadDashboard();
     } catch (error) {
-      loginMessage.textContent = error.message;
+      setStatus(loginMessage, error.message);
     } finally {
       submit.disabled = false;
     }
@@ -1039,7 +1117,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // تسجيل دخول المالك لقفل قسم العاملين فقط
   ownerLoginForm.addEventListener('submit', async (event) => {
     event.preventDefault();
-    ownerLoginMessage.textContent = '';
+    setStatus(ownerLoginMessage, '');
     const submit = ownerLoginForm.querySelector('button[type="submit"]');
     submit.disabled = true;
     const formData = new FormData(ownerLoginForm);
@@ -1055,7 +1133,7 @@ document.addEventListener('DOMContentLoaded', () => {
       selectOwnerMoneyView('hrView');
       await loadOwnerMoneyView('hrView');
     } catch (error) {
-      ownerLoginMessage.textContent = error.message;
+      setStatus(ownerLoginMessage, error.message);
     } finally {
       submit.disabled = false;
     }
@@ -1171,6 +1249,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = event.currentTarget;
     submitCollectionForm(form, event, async (message) => {
       const formData = new FormData(form);
+      const projectId = document.getElementById('projectId').value;
+      if (projectId) {
+        await api(`/api/admin/projects/${encodeURIComponent(projectId)}`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            name: formData.get('name'),
+            agreedAmount: formData.get('agreedAmount')
+          })
+        });
+        resetProjectForm();
+        await refreshCollectionsAfterSave(message, 'تم تحديث بيانات المشروع وقيمة الاتفاق.', projectId);
+        return;
+      }
       await api('/api/admin/projects', {
         method: 'POST',
         body: JSON.stringify({
@@ -1183,6 +1274,8 @@ document.addEventListener('DOMContentLoaded', () => {
       await refreshCollectionsAfterSave(message, 'تم تسجيل المشروع وربطه بطلب العميل.');
     });
   });
+
+  document.getElementById('projectCancel').addEventListener('click', resetProjectForm);
 
   const receiptType = document.getElementById('receiptType');
   const receiptProject = document.getElementById('receiptProject');
@@ -1238,23 +1331,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('categoryForm').addEventListener('submit', async (event) => {
     event.preventDefault();
+    const form = event.currentTarget;
     const message = document.getElementById('categoriesMessage');
-    message.textContent = '';
+    const unlock = lockSubmit(form);
+    setStatus(message, '');
     try {
       await api('/api/admin/hr/categories', {
         method: 'POST',
         body: JSON.stringify({ name: document.getElementById('categoryName').value })
       });
-      document.getElementById('categoryForm').reset();
-      message.textContent = 'تمت إضافة فئة العمل.';
+      form.reset();
+      setStatus(message, 'تمت إضافة فئة العمل.', 'success');
       await loadHrData();
     } catch (error) {
-      message.textContent = error.message;
+      setStatus(message, error.message);
+    } finally {
+      unlock();
     }
   });
 
   document.getElementById('workerForm').addEventListener('submit', async (event) => {
     event.preventDefault();
+    const form = event.currentTarget;
     const message = document.getElementById('workersMessage');
     const workerId = document.getElementById('workerId').value;
     const body = {
@@ -1263,17 +1361,20 @@ document.addEventListener('DOMContentLoaded', () => {
       categoryId: document.getElementById('workerCategory').value,
       monthlySalary: document.getElementById('workerSalary').value
     };
-    message.textContent = '';
+    const unlock = lockSubmit(form);
+    setStatus(message, '');
     try {
       await api(workerId ? `/api/admin/hr/workers/${workerId}` : '/api/admin/hr/workers', {
         method: workerId ? 'PATCH' : 'POST',
         body: JSON.stringify(body)
       });
       resetWorkerForm();
-      message.textContent = workerId ? 'تم تحديث بيانات العامل.' : 'تمت إضافة العامل.';
+      setStatus(message, workerId ? 'تم تحديث بيانات العامل.' : 'تمت إضافة العامل.', 'success');
       await loadHrData();
     } catch (error) {
-      message.textContent = error.message;
+      setStatus(message, error.message);
+    } finally {
+      unlock();
     }
   });
 
@@ -1291,8 +1392,10 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('attendanceStatus').dispatchEvent(new Event('change'));
   document.getElementById('attendanceForm').addEventListener('submit', async (event) => {
     event.preventDefault();
+    const form = event.currentTarget;
     const message = document.getElementById('attendanceMessage');
-    message.textContent = '';
+    const unlock = lockSubmit(form);
+    setStatus(message, '');
     try {
       await api('/api/admin/hr/attendance', {
         method: 'PUT',
@@ -1307,10 +1410,12 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       document.getElementById('attendanceForm').reset();
       document.getElementById('attendanceStatus').dispatchEvent(new Event('change'));
-      message.textContent = 'تم حفظ سجل الحضور والانصراف.';
+      setStatus(message, 'تم حفظ سجل الحضور والانصراف.', 'success');
       await loadAttendance();
     } catch (error) {
-      message.textContent = error.message;
+      setStatus(message, error.message);
+    } finally {
+      unlock();
     }
   });
 
@@ -1324,24 +1429,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('advanceForm').addEventListener('submit', async (event) => {
     event.preventDefault();
+    const form = event.currentTarget;
     const message = document.getElementById('advancesMessage');
-    message.textContent = '';
+    const advanceDate = document.getElementById('advanceDate').value;
+    const unlock = lockSubmit(form);
+    setStatus(message, '');
     try {
       await api('/api/admin/hr/advances', {
         method: 'POST',
         body: JSON.stringify({
           workerId: document.getElementById('advanceWorker').value,
-          date: document.getElementById('advanceDate').value,
+          date: advanceDate,
           amount: document.getElementById('advanceAmount').value,
           note: document.getElementById('advanceNote').value
         })
       });
-      document.getElementById('advanceForm').reset();
+      form.reset();
       document.getElementById('advanceDate').value = localDate();
-      message.textContent = 'تم تسجيل السُلفة وخصمها في كشف شهرها.';
+      // نعرض شهر تاريخ السلفة نفسه حتى تظهر في القائمة والكشف مباشرة.
+      if (advanceDate) document.getElementById('payrollMonth').value = advanceDate.slice(0, 7);
+      setStatus(message, 'تم تسجيل السُلفة وخصمها في كشف شهرها.', 'success');
       await Promise.all([loadAdvances(), loadPayroll()]);
     } catch (error) {
-      message.textContent = error.message;
+      setStatus(message, error.message);
+    } finally {
+      unlock();
     }
   });
 
@@ -1349,7 +1461,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       await Promise.all([loadAdvances(), loadPayroll()]);
     } catch (error) {
-      document.getElementById('payrollMessage').textContent = error.message;
+      showHrError(error);
     }
   });
 
@@ -1371,7 +1483,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (button.dataset.hrView === 'advancesView') await loadAdvances();
         if (button.dataset.hrView === 'payrollView') await loadPayroll();
       } catch (error) {
-        document.getElementById('payrollMessage').textContent = error.message;
+        showHrError(error);
       }
     });
   });

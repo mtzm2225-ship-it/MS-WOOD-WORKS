@@ -43,8 +43,18 @@ document.addEventListener('DOMContentLoaded', () => {
     cancelled: 'ملغي'
   };
   let customerAccount = null;
+  let refreshCustomerAccountOrders = null;
 
-  const galleryAssets = window.MSWoodGalleryAssets.gallery;
+  const prefillContactForm = () => {
+    if (!form || !customerAccount) return;
+    const name = form.querySelector('#cf-name');
+    const phone = form.querySelector('#cf-phone');
+    if (name && !name.value.trim()) name.value = customerAccount.name;
+    if (phone && !phone.value.trim()) phone.value = customerAccount.phone;
+  };
+
+  // بيانات المعرض تأتي من gallery-assets.js؛ نتابع العمل حتى لو تعذر تحميلها.
+  const galleryAssets = (window.MSWoodGalleryAssets && window.MSWoodGalleryAssets.gallery) || [];
 
   if (customerReviewForm) {
     const projectSelect = customerReviewForm.elements.namedItem('galleryId');
@@ -61,6 +71,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     galleryGrid.classList.add('gallery__grid--curated');
     galleryGrid.replaceChildren();
+    if (!galleryAssets.length) {
+      const empty = document.createElement('p');
+      empty.className = 'gallery-comments__empty';
+      empty.textContent = 'تعذر تحميل صور المعرض الآن. حدّث الصفحة للمحاولة مرة أخرى.';
+      galleryGrid.append(empty);
+      return;
+    }
     galleryAssets.forEach((item, index) => {
       const card = document.createElement('article');
       card.className = `tile ${index === 0 ? 'tile--feature' : 'tile--side'}`;
@@ -133,8 +150,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!response.ok) throw new Error(comments.error || 'تعذر تحميل التعليقات.');
       renderComments(comments);
     } catch {
-        commentList.setAttribute('aria-busy', 'false');
-        commentList.textContent = 'تعذر تحميل التعليقات الآن. حاول مرة أخرى لاحقًا.';
+      commentList.setAttribute('aria-busy', 'false');
+      commentList.textContent = 'تعذر تحميل التعليقات الآن. حاول مرة أخرى لاحقًا.';
     }
   };
 
@@ -406,6 +423,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ? `حسابي · ${customerAccount.name}`
         : 'دخول العملاء';
       if (!customerAccount) return;
+      prefillContactForm();
 
       document.getElementById('customerAccountName').textContent =
         `${customerAccount.name} · ${customerAccount.email}`;
@@ -515,6 +533,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadCustomerAccount().catch((error) => {
       customerLoginNote.textContent = error.message;
     });
+    refreshCustomerAccountOrders = loadCustomerAccount;
   }
 
   const toTopButton = document.getElementById('toTop');
@@ -566,6 +585,9 @@ document.addEventListener('DOMContentLoaded', () => {
         formNote.textContent = 'تم تسجيل طلبك. نراجع التفاصيل ونتواصل معك لمناقشة الخطوة التالية.';
         form.reset();
         fields.forEach((field) => field.removeAttribute('aria-invalid'));
+        // نعيد بيانات العميل المسجل ونحدّث سجل طلباته ليشمل الطلب الجديد.
+        prefillContactForm();
+        if (customerAccount) refreshCustomerAccountOrders?.().catch(() => {});
       } catch (error) {
         formNote.textContent = error instanceof TypeError
           ? 'تعذر الاتصال بالورشة الآن. احتفظنا بتفاصيلك في النموذج؛ تحقق من الاتصال ثم أعد المحاولة.'

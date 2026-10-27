@@ -12,15 +12,22 @@
   <meta name="description" content="أثاث خشبي حسب المقاس للمنزل والمكتب. استكشف نماذج التصميم وأرسل تفاصيل مشروعك إلى ورشة MS Woodworks." />
   <meta name="author" content="Mohamed Ismail" />
   <meta name="theme-color" content="#1E1B18" />
+  <link rel="canonical" href="https://ms-wood-works.vercel.app/" />
+  <link rel="icon" type="image/jpeg" href="img/Gemini_Generated_Image_rm6yb4rm6yb4rm6y.jpeg" />
+  <link rel="apple-touch-icon" href="img/Gemini_Generated_Image_rm6yb4rm6yb4rm6y.jpeg" />
 
   <!-- Open Graph -->
   <meta property="og:type" content="website" />
+  <meta property="og:locale" content="ar_EG" />
+  <meta property="og:site_name" content="MS Woodworks" />
+  <meta property="og:url" content="https://ms-wood-works.vercel.app/" />
   <meta property="og:title" content="MS Woodworks — أثاث خشبي حسب الطلب" />
   <meta property="og:description" content="استكشف نماذج تصميم الأثاث الخشبي وأرسل تفاصيل مشروعك إلى الورشة." />
-  <meta property="og:image" content="img/MS%20Woodworks_%20Crafted%20in%20Warmth.png" />
-
-  <link rel="icon" type="image/jpeg" href="img/Gemini_Generated_Image_rm6yb4rm6yb4rm6y.jpeg" />
-  <link rel="apple-touch-icon" href="img/Gemini_Generated_Image_rm6yb4rm6yb4rm6y.jpeg" />
+  <meta property="og:image" content="https://ms-wood-works.vercel.app/img/MS%20Woodworks_%20Crafted%20in%20Warmth.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="MS Woodworks — أثاث خشبي حسب الطلب" />
+  <meta name="twitter:description" content="استكشف نماذج تصميم الأثاث الخشبي وأرسل تفاصيل مشروعك إلى الورشة." />
+  <meta name="twitter:image" content="https://ms-wood-works.vercel.app/img/MS%20Woodworks_%20Crafted%20in%20Warmth.png" />
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -55,7 +62,6 @@
           <li><a href="#services" class="nav__link">الخدمات</a></li>
           <li><a href="#gallery" class="nav__link">المعرض</a></li>
           <li><a href="#workshop" class="nav__link">الورشة</a></li>
-          <li><a href="#workshop" class="nav__link">من نحن</a></li>
           <li><a href="#contact" class="nav__link">تواصل</a></li>
           <li><button class="nav__link nav__login" id="customerAccountOpen" type="button">دخول العملاء</button></li>
         </ul>
@@ -302,7 +308,7 @@
   <dialog class="gallery-details" id="galleryDetails" aria-labelledby="galleryDetailsTitle">
     <div class="gallery-details__inner">
       <button class="gallery-comments__close" id="closeGalleryDetails" type="button" aria-label="إغلاق تفاصيل النموذج">×</button>
-      <img class="gallery-details__image" id="galleryDetailsImage" src="" alt="" />
+      <img class="gallery-details__image" id="galleryDetailsImage" alt="" />
       <div class="gallery-details__copy">
         <p class="section-tag" id="galleryDetailsCategory"></p>
         <h2 id="galleryDetailsTitle"></h2>
@@ -316,7 +322,7 @@
     <div class="gallery-comments__inner">
       <button class="gallery-comments__close" id="closeGalleryComments" type="button" aria-label="إغلاق التعليقات">×</button>
       <div class="gallery-comments__head">
-        <img id="galleryCommentImage" src="" alt="" />
+        <img id="galleryCommentImage" alt="" />
         <div>
           <p class="section-tag">تعليقات على النموذج</p>
           <h2 id="galleryCommentTitle"></h2>
@@ -452,15 +458,15 @@
 
         <form class="contact-form" id="contactForm" novalidate>
           <div class="field">
-            <input type="text" id="cf-name" name="name" autocomplete="name" required placeholder=" " />
+            <input type="text" id="cf-name" name="name" autocomplete="name" maxlength="100" required placeholder=" " />
             <label for="cf-name">الاسم الكامل</label>
           </div>
           <div class="field">
-            <input type="tel" id="cf-phone" name="phone" autocomplete="tel" required placeholder=" " dir="ltr" />
+            <input type="tel" id="cf-phone" name="phone" autocomplete="tel" inputmode="tel" maxlength="40" required placeholder=" " dir="ltr" />
             <label for="cf-phone">رقم الهاتف</label>
           </div>
           <div class="field">
-            <textarea id="cf-msg" name="message" rows="3" required placeholder=" " aria-describedby="cf-msg-help"></textarea>
+            <textarea id="cf-msg" name="message" rows="3" maxlength="3000" required placeholder=" " aria-describedby="cf-msg-help"></textarea>
             <label for="cf-msg">تفاصيل المشروع</label>
             <small class="field__help" id="cf-msg-help">ما القطعة المطلوبة؟ اذكر المقاس والمكان إن كانا متاحين.</small>
           </div>

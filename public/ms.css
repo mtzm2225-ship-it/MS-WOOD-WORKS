@@ -1,5 +1,5 @@
 /*
-  public/ms-v2.css — نظام تصميم موحد لموقع MS Woodworks
+  public/ms.css — نظام تصميم موحد لموقع MS Woodworks
   نسخة مُعاد بناؤها من الصفر: كل الكلاسات الموجودة في index.html مدعومة هنا
   بدون تكرار أو تعارض. التصميم داكن دافئ بلمسات ذهبية، RTL، ومتجاوب.
 */
@@ -1284,6 +1284,12 @@ main > section.section + section.section::before {
 }
 
 .field textarea { min-height: 128px; }
+
+.field input[aria-invalid="true"],
+.field textarea[aria-invalid="true"] {
+  border-color: #a34a38;
+  box-shadow: 0 0 0 3px rgba(163, 74, 56, 0.15);
+}
 
 .field input:focus-visible,
 .field textarea:focus-visible {

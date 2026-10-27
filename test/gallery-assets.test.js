@@ -35,12 +35,11 @@ test('shared gallery assets retain valid images and stable comment IDs', () => {
   }
 });
 
-test('website and both admin entry points load the shared gallery data first', () => {
+test('website and admin load the shared gallery data first', () => {
   const publicDir = path.join(__dirname, '..', 'public');
   const pages = [
     { file: 'index.html', nextScript: 'ms.js' },
-    { file: 'admin.html', nextScript: 'admin.js' },
-    { file: path.join('admin', 'index.html'), nextScript: 'admin.js' }
+    { file: 'admin.html', nextScript: 'admin.js' }
   ];
 
   for (const { file, nextScript } of pages) {

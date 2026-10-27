@@ -1,16 +1,20 @@
 /*
  * Shared gallery metadata for the storefront and admin comment references.
  * Historical IDs must remain stable even when an asset is no longer featured.
+ * The same file is loaded by the browser (window.MSWoodGalleryAssets) and by the
+ * server (module.exports) so comment requests can only reference real images.
  */
 (() => {
-  const imageBase = new URL('img/', document.currentScript.src);
+  const imageBase = typeof document !== 'undefined' && document.currentScript
+    ? new URL('img/', document.currentScript.src)
+    : null;
   const defineAsset = (id, filename, title, alt, category, featured = false) => ({
     id,
     title,
     alt,
     category,
     featured,
-    src: new URL(filename, imageBase).href
+    src: imageBase ? new URL(filename, imageBase).href : filename
   });
 
   const assets = [
@@ -27,8 +31,11 @@
     defineAsset('brand-mark', 'Gemini_Generated_Image_rm6yb4rm6yb4rm6y.jpeg', 'شعار MS Woodworks', 'الشعار الخشبي الكامل لعلامة MS Woodworks', 'هوية العلامة')
   ];
 
-  window.MSWoodGalleryAssets = Object.freeze({
+  const api = Object.freeze({
     gallery: Object.freeze(assets.filter((asset) => asset.featured)),
     byId: Object.freeze(Object.fromEntries(assets.map((asset) => [asset.id, asset])))
   });
+
+  if (typeof window !== 'undefined') window.MSWoodGalleryAssets = api;
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })();

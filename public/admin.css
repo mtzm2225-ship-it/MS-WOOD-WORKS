@@ -154,6 +154,8 @@ h2 { margin-bottom: 4px; font-size: 1.4rem; }
 }
 .login-form .button { margin-top: 8px; }
 .form-message, .inline-message { min-height: 1.4em; margin: 0; color: var(--admin-red); }
+.form-message.is-success, .inline-message.is-success { color: var(--admin-green); }
+.form-message.is-error, .inline-message.is-error { color: var(--admin-red); }
 
 .summary-grid {
   display: grid;
